@@ -1,0 +1,13 @@
+{
+  "domain": "nsw_fire_watch",
+  "name": "NSW Fire Watch",
+  "codeowners": ["@hallyaus"],
+  "config_flow": true,
+  "dependencies": ["frontend", "geo_location", "http"],
+  "documentation": "https://github.com/hallyaus/nsw-fire-watch",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/hallyaus/nsw-fire-watch/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

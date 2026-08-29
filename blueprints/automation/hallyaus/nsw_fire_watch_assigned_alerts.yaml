@@ -1,0 +1,453 @@
+blueprint:
+  name: NSW Fire Watch - assigned mobile alerts
+  description: >-
+    Sends lifecycle-aware NSW Fire Watch alerts to one Home Assistant Companion
+    App device. Create one automation from this blueprint for each person or
+    monitored location. Advice notifications are never critical, escalation
+    overrides the selected warning threshold, and Emergency Warning alerts
+    cannot be snoozed. This is supplementary to official NSW RFS warnings.
+  domain: automation
+  author: HallyAus contributors
+  source_url: https://github.com/HallyAus/nsw-fire-watch/blob/main/blueprints/automation/hallyaus/nsw_fire_watch_assigned_alerts.yaml
+  homeassistant:
+    min_version: 2025.12.0
+  input:
+    delivery:
+      name: Delivery
+      icon: mdi:cellphone-message
+      input:
+        notify_device:
+          name: Companion App device
+          description: >-
+            The phone or tablet assigned to this automation. Create another
+            automation from the blueprint to assign the alert to another person.
+          selector:
+            device:
+              filter:
+                integration: mobile_app
+        dashboard_path:
+          name: Fire Watch dashboard path
+          description: >-
+            Relative Home Assistant path opened when the notification is tapped.
+            A relative path follows the local or remote server selected by the app.
+          default: /nsw-fire-watch
+          selector:
+            text:
+        additional_actions:
+          name: Additional delivery actions
+          description: >-
+            Optional actions for a notify group, wall panel, TTS, or another
+            channel. Templates may use alert_title, alert_message, alert_data,
+            incident_id, location_name, lifecycle, level, and official_url.
+          default: []
+          selector:
+            action:
+
+    assignment:
+      name: Assignment and threshold
+      icon: mdi:map-marker-alert
+      input:
+        assigned_location:
+          name: Assigned location filter
+          description: >-
+            Optional exact NSW Fire Watch location name or config-entry ID. Leave
+            blank to receive events from every configured location.
+          default: ""
+          selector:
+            text:
+        minimum_warning_level:
+          name: Minimum official warning level
+          description: >-
+            Nearby incidents without an official warning are excluded unless
+            "All nearby incidents" is selected. Planned-burn filtering remains
+            the integration's responsibility.
+          default: advice
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: All nearby incidents
+                  value: all_nearby
+                - label: Advice or higher
+                  value: advice
+                - label: Watch and Act or higher
+                  value: watch_and_act
+                - label: Emergency Warning only
+                  value: emergency_warning
+        include_danger_alerts:
+          name: Fire danger and Total Fire Ban alerts
+          description: >-
+            Deliver qualifying High-or-worse fire danger and Total Fire Ban
+            lifecycle events for this location's configured district.
+          default: true
+          selector:
+            boolean:
+        lifecycles:
+          name: Lifecycle changes
+          description: >-
+            Escalations always pass the lifecycle filter. Routine "updated"
+            events are off by default to reduce noise.
+          default:
+            - new
+            - escalated
+            - deescalated
+            - resolved
+            - test
+          selector:
+            select:
+              multiple: true
+              mode: list
+              options:
+                - label: New incident
+                  value: new
+                - label: Escalated
+                  value: escalated
+                - label: Material update
+                  value: updated
+                - label: De-escalated
+                  value: deescalated
+                - label: Resolved or expired from feed
+                  value: resolved
+                - label: Left configured monitoring radius
+                  value: left_radius
+                - label: Test alert
+                  value: test
+
+    interruption:
+      name: Interruption and snooze
+      icon: mdi:bell-alert
+      collapsed: true
+      input:
+        critical_from:
+          name: Critical delivery from
+          description: >-
+            Critical delivery may bypass Focus or Do Not Disturb when permitted by
+            the phone. Advice, tests, de-escalations, and resolutions are never
+            critical. Android users control channel interruption in system settings.
+          default: emergency_warning
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Never
+                  value: disabled
+                - label: Emergency Warning
+                  value: emergency_warning
+                - label: Watch and Act
+                  value: watch_and_act
+        advice_snooze_minutes:
+          name: Advice/nearby snooze
+          default: 120
+          selector:
+            number:
+              min: 15
+              max: 120
+              step: 15
+              unit_of_measurement: min
+              mode: slider
+        watch_snooze_minutes:
+          name: Watch and Act snooze
+          default: 30
+          selector:
+            number:
+              min: 15
+              max: 30
+              step: 15
+              unit_of_measurement: min
+              mode: slider
+
+triggers:
+  - trigger: event
+    event_type: nsw_fire_watch_alert
+
+variables:
+  assigned_location: !input assigned_location
+  selected_lifecycles: !input lifecycles
+  minimum_warning_level: !input minimum_warning_level
+  include_danger_alerts: !input include_danger_alerts
+  critical_from: !input critical_from
+  dashboard_path: !input dashboard_path
+  advice_snooze_minutes: !input advice_snooze_minutes
+  watch_snooze_minutes: !input watch_snooze_minutes
+  alert_data: "{{ trigger.event.data }}"
+  entry_id: "{{ alert_data.get('entry_id', '') }}"
+  location_name: "{{ alert_data.get('location_name', 'Configured location') }}"
+  lifecycle: "{{ alert_data.get('lifecycle', 'updated') | lower }}"
+  alert_kind: "{{ alert_data.get('alert_kind', 'incident') | lower }}"
+  is_danger: "{{ alert_kind == 'danger' }}"
+  incident: >-
+    {{ alert_data.get('incident')
+       if alert_data.get('incident') is mapping else {} }}
+  previous: >-
+    {{ alert_data.get('previous')
+       if alert_data.get('previous') is mapping else {} }}
+  danger: >-
+    {{ alert_data.get('danger')
+       if alert_data.get('danger') is mapping else {} }}
+  qualifies_for_alert: "{{ alert_data.get('qualifies_for_alert', true) }}"
+  notification_allowed: "{{ alert_data.get('notification_allowed', true) }}"
+  direct_delivery_configured: >-
+    {{ alert_data.get('direct_delivery_configured', false) }}
+  is_test: "{{ alert_data.get('test', lifecycle == 'test') }}"
+  raw_level: >-
+    {% if is_danger %}
+      {{ danger.get('rating', previous.get('rating', 'Unknown')) }}
+    {% else %}
+      {{ alert_data.get(
+        'level',
+        alert_data.get(
+          'warning_level',
+          incident.get('warning_level', previous.get('warning_level', 'Unknown'))
+        )
+      ) }}
+    {% endif %}
+  level: >-
+    {{ raw_level | lower | replace('&', 'and') | replace('-', '_')
+       | replace(' ', '_') }}
+  level_rank: >-
+    {{ {
+      'not_applicable': 0,
+      'no_rating': 0,
+      'advice': 1,
+      'watch_and_act': 2,
+      'emergency_warning': 3,
+      'high': 1,
+      'extreme': 2,
+      'catastrophic': 3
+    }.get(level, 0) }}
+  minimum_rank: >-
+    {{ {
+      'all_nearby': 0,
+      'advice': 1,
+      'watch_and_act': 2,
+      'emergency_warning': 3
+    }.get(minimum_warning_level, 1) }}
+  incident_id: >-
+    {{ alert_data.get(
+      'danger_id' if is_danger else 'incident_id',
+      danger.get('id', incident.get('id', 'test'))
+    ) | string }}
+  incident_title: >-
+    {% if is_danger %}
+      {{ danger.get('district', location_name) }}
+    {% else %}
+      {{ alert_data.get(
+        'title', incident.get('title', previous.get('title', 'NSW fire information update'))
+      ) }}
+    {% endif %}
+  incident_type: >-
+    {{ 'Fire danger / Total Fire Ban' if is_danger
+       else alert_data.get('type', incident.get('type', 'Incident')) }}
+  control_status: >-
+    {% if is_danger %}
+      {{ danger.get('period', 'published period') }}
+    {% else %}
+      {{ alert_data.get(
+        'control_status',
+        incident.get('control_status', previous.get('control_status', 'Unknown'))
+      ) }}
+    {% endif %}
+  distance_km: >-
+    {{ alert_data.get(
+      'distance_km', incident.get('distance_km', previous.get('distance_km'))
+    ) }}
+  official_url: >-
+    {% set supplied = alert_data.get('official_url', incident.get('official_url', '')) %}
+    {{ supplied if supplied is string and supplied.startswith('http')
+       else 'https://www.rfs.nsw.gov.au/fire-information/fires-near-me' }}
+  notification_tag: >-
+    {{ alert_data.get(
+      'notification_tag',
+      'nsw-fire-watch-' ~ entry_id ~ '-' ~ incident_id
+    ) }}
+  lifecycle_label: >-
+    {% if is_danger and lifecycle == 'resolved' %}
+      Declaration changed
+    {% else %}
+      {{ {
+        'new': 'New',
+        'updated': 'Updated',
+        'escalated': 'Escalated',
+        'deescalated': 'De-escalated',
+        'resolved': 'No longer in current feed',
+        'left_radius': 'Outside monitoring radius',
+        'test': 'Test'
+      }.get(lifecycle, 'Updated') }}
+    {% endif %}
+  level_label: >-
+    {{ {
+      'not_applicable': 'No official warning',
+      'no_rating': 'No official warning',
+      'advice': 'Advice',
+      'watch_and_act': 'Watch and Act',
+      'emergency_warning': 'Emergency Warning',
+      'high': 'High',
+      'extreme': 'Extreme',
+      'catastrophic': 'Catastrophic'
+    }.get(level, raw_level) }}
+  recommended_action: >-
+    {{ alert_data.get(
+      'recommended_action',
+      incident.get('instruction') or {
+        'advice': 'Stay up to date.',
+        'watch_and_act': 'Start taking action now.',
+        'emergency_warning': 'Take action immediately.'
+      }.get(level, 'Check official NSW RFS information.')
+    ) }}
+  alert_title: >-
+    {% if is_danger and danger.get('total_fire_ban') == true %}
+      Total Fire Ban · {{ danger.get('district', location_name) }}
+    {% elif is_danger %}
+      {{ level_label }} fire danger · {{ danger.get('period', 'published period') }}
+    {% else %}
+      {{ lifecycle_label }} · {{ level_label }}
+    {% endif %}
+  alert_message: >-
+    {% set supplied = alert_data.get('summary', '') %}
+    {% if supplied %}
+      {{ supplied }} {{ recommended_action }}
+    {% else %}
+      {{ incident_title }} · {{ incident_type }} · {{ control_status }}{% if
+      distance_km not in [none, '', 'unknown'] %} · {{ distance_km }} km{% endif %}.
+      {{ recommended_action }}
+    {% endif %}
+    {% if lifecycle == 'resolved' %} This is not an all-clear; verify with NSW RFS.{% endif %}
+  can_ack: "{{ not is_danger and lifecycle not in ['resolved', 'left_radius', 'test'] }}"
+  can_snooze: "{{ can_ack and level_rank < 3 }}"
+  snooze_minutes: >-
+    {{ watch_snooze_minutes if level_rank == 2 else advice_snooze_minutes }}
+  critical_rank: >-
+    {{ {'disabled': 99, 'emergency_warning': 3, 'watch_and_act': 2}
+       .get(critical_from, 99) }}
+  delivery_priority: >-
+    {{ alert_data.get('delivery_priority', 'normal') | lower }}
+  is_critical: >-
+    {{ lifecycle not in ['test', 'deescalated', 'resolved', 'left_radius']
+       and critical_from != 'disabled'
+       and (
+         (is_danger and delivery_priority == 'critical')
+         or (not is_danger and level_rank >= critical_rank)
+       ) }}
+  is_time_sensitive: >-
+    {{ is_critical or (
+      lifecycle not in ['test', 'deescalated', 'resolved', 'left_radius']
+      and delivery_priority in ['time_sensitive', 'critical']
+    ) }}
+  action_ack: >-
+    {{ 'NSW_FIRE_WATCH_ACK|' ~ entry_id ~ '|' ~ incident_id }}
+  action_snooze: >-
+    {{ 'NSW_FIRE_WATCH_SNOOZE|' ~ entry_id ~ '|' ~ incident_id ~ '|'
+       ~ (snooze_minutes | int) }}
+  notification_actions: >-
+    {% set official = {
+      'action': 'URI',
+      'title': 'Official NSW RFS',
+      'uri': official_url
+    } %}
+    {% set dashboard = {
+      'action': 'URI',
+      'title': 'Open Fire Watch',
+      'uri': dashboard_path
+    } %}
+    {% if can_snooze %}
+      {{ [
+        {'action': action_ack, 'title': 'Acknowledge'},
+        {
+          'action': action_snooze,
+          'title': 'Snooze ' ~ snooze_minutes ~ ' min'
+        },
+        official
+      ] }}
+    {% elif can_ack %}
+      {{ [
+        {'action': action_ack, 'title': 'Acknowledge'},
+        official,
+        dashboard
+      ] }}
+    {% else %}
+      {{ [dashboard, official] }}
+    {% endif %}
+
+conditions:
+  - condition: template
+    alias: Integration direct delivery is not already the owner
+    value_template: "{{ not direct_delivery_configured }}"
+  - condition: template
+    alias: Event is assigned to this automation
+    value_template: >-
+      {% set wanted = assigned_location | trim | lower %}
+      {{ wanted == '' or wanted == location_name | lower or wanted == entry_id | lower }}
+  - condition: template
+    alias: Lifecycle is selected, or it is an escalation
+    value_template: >-
+      {{ lifecycle == 'escalated' or lifecycle in selected_lifecycles }}
+  - condition: template
+    alias: Integration qualification and acknowledgement rules permit the event
+    value_template: >-
+      {{ is_test or (qualifies_for_alert and notification_allowed) }}
+  - condition: template
+    alias: Event meets the warning threshold
+    value_template: >-
+      {{ (is_danger and include_danger_alerts)
+         or (not is_danger and (
+           lifecycle in ['escalated', 'test'] or level_rank >= minimum_rank
+         )) }}
+
+actions:
+  - if:
+      - condition: template
+        value_template: "{{ lifecycle == 'resolved' }}"
+    then:
+      - alias: Clear the active incident notification
+        domain: mobile_app
+        type: notify
+        device_id: !input notify_device
+        message: clear_notification
+        data:
+          tag: "{{ notification_tag }}"
+
+  - alias: Send assigned fire alert
+    domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: "{{ alert_title }}"
+    message: "{{ alert_message }}"
+    data:
+      tag: "{{ notification_tag ~ '-resolved' if lifecycle == 'resolved' else notification_tag }}"
+      group: nsw_fire_watch
+      url: "{{ dashboard_path }}"
+      clickAction: "{{ dashboard_path }}"
+      notification_icon: mdi:fire-alert
+      color: >-
+        {{ {
+          'emergency_warning': '#D32F2F',
+          'watch_and_act': '#EF6C00',
+          'advice': '#F9A825',
+          'catastrophic': '#7F1D1D',
+          'extreme': '#C2410C',
+          'high': '#F9A825'
+        }.get(level, '#607D8B') }}
+      ttl: "{{ 0 if is_time_sensitive else 3600 }}"
+      priority: "{{ 'high' if is_time_sensitive else 'normal' }}"
+      channel: "{{ 'NSW Fire Watch Critical' if is_critical else 'NSW Fire Watch' }}"
+      importance: "{{ 'max' if is_critical else 'high' if is_time_sensitive else 'default' }}"
+      push: >-
+        {% if is_critical %}
+          {{ {
+            'interruption-level': 'critical',
+            'sound': {'name': 'default', 'critical': 1, 'volume': 1.0}
+          } }}
+        {% elif is_time_sensitive %}
+          {{ {'interruption-level': 'time-sensitive'} }}
+        {% else %}
+          {{ {'interruption-level': 'active'} }}
+        {% endif %}
+      actions: "{{ notification_actions }}"
+
+  - alias: Run optional additional delivery actions
+    choose: []
+    default: !input additional_actions
+
+mode: parallel
+max: 100
+max_exceeded: warning

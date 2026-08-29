@@ -1,0 +1,26 @@
+# Optional Home Assistant helpers for the dashboard's household-readiness list.
+#
+# Copy this file into your configured packages directory, restart Home Assistant,
+# then select these helpers in NSW Fire Watch integration options. Checking an
+# item records preparation work only; it never means the property or household
+# is safe from fire.
+
+input_boolean:
+  nsw_fire_watch_plan_reviewed:
+    name: Bush fire survival plan reviewed this season
+    icon: mdi:file-document-check-outline
+  nsw_fire_watch_go_bag_checked:
+    name: Emergency go-bag checked
+    icon: mdi:bag-personal-outline
+  nsw_fire_watch_property_prepared:
+    name: Property preparation checklist completed
+    icon: mdi:home-check-outline
+  nsw_fire_watch_pets_ready:
+    name: Pet transport and supplies ready
+    icon: mdi:paw
+  nsw_fire_watch_contacts_confirmed:
+    name: Household contacts and meeting point confirmed
+    icon: mdi:account-group-outline
+  nsw_fire_watch_vehicle_ready:
+    name: Vehicle fuel and access checked
+    icon: mdi:car-check

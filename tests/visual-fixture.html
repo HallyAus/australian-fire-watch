@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NSW Fire Watch visual fixture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --primary-background-color: #0b1117;
+        --card-background-color: #17212b;
+        --primary-text-color: #ecf2f8;
+        --secondary-text-color: #aab7c4;
+        --divider-color: rgba(236, 242, 248, 0.18);
+        --primary-color: #3b82f6;
+        --ha-card-border-radius: 18px;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--primary-background-color);
+        color: var(--primary-text-color);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header.fixture-header {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 20px 14px 8px;
+      }
+      header.fixture-header h1 { margin: 0 0 4px; font-size: 1.35rem; }
+      header.fixture-header p { margin: 0; color: var(--secondary-text-color); }
+      .fixtures {
+        display: grid;
+        grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+        gap: 18px;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 14px;
+        align-items: start;
+      }
+      .fixture-case > h2 {
+        margin: 0 0 8px;
+        color: var(--secondary-text-color);
+        font-size: .8rem;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+      @media (max-width: 760px) {
+        .fixtures { grid-template-columns: 1fr; padding: 10px; }
+      }
+    </style>
+    <script defer src="../custom_components/nsw_fire_watch/frontend/nsw-fire-watch-panel.js"></script>
+    <script defer>
+      window.addEventListener("DOMContentLoaded", () => {
+        const minutesAgo = (minutes) =>
+          new Date(Date.now() - minutes * 60 * 1000).toISOString();
+
+        const summary = {
+          entity_id: "sensor.fixture_nsw_fire_watch",
+          state: "incident_nearby",
+          last_updated: minutesAgo(2),
+          attributes: {
+            integration: "nsw_fire_watch",
+            friendly_name: "Fixture Home Fire Watch",
+            entry_id: "fixture-entry",
+            location_name: "Fixture Home",
+            official_warning_level: "advice",
+            summary:
+              "An Advice-level bush fire is the highest-priority incident in the monitored radius.",
+            recommended_action: "Stay up to date",
+            danger: {
+              today: {
+                rating: "High",
+                fbi: 31,
+                total_fire_ban: false,
+                issued_at: minutesAgo(90),
+                temperature_c: 31,
+                humidity_percent: 24,
+                wind_speed_kmh: 28,
+                wind_gust_kmh: 44,
+                rain_mm: 0,
+                condition: "Hot and windy",
+                available: true,
+                units: {
+                  temperature: "°C",
+                  humidity: "%",
+                  wind_speed: "km/h",
+                  rain: "mm"
+                }
+              },
+              tomorrow: {
+                rating: "Extreme",
+                fbi: 58,
+                total_fire_ban: true,
+                issued_at: minutesAgo(90),
+                temperature_c: 36,
+                humidity_percent: 17,
+                wind_speed_kmh: 35,
+                wind_gust_kmh: 62,
+                rain_mm: 0,
+                condition: "Hot, dry and windy",
+                available: true,
+                units: {
+                  temperature: "°C",
+                  humidity: "%",
+                  wind_speed: "km/h",
+                  rain: "mm"
+                }
+              }
+            },
+            incidents: [
+              {
+                id: "fixture-advice-1",
+                entity_id: "geo_location.fixture_advice_fire",
+                title: "RIDGE ROAD, FIXTURE VALLEY",
+                type: "Bush Fire",
+                warning_level: "Advice",
+                control_status: "Being controlled",
+                distance_km: 8.4,
+                direction: "west",
+                council: "Fixture Council",
+                size_ha: 42,
+                updated_at: minutesAgo(4),
+                official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me"
+              },
+              {
+                id: "fixture-unclassified-2",
+                entity_id: "geo_location.fixture_unclassified_fire",
+                title: "OLD HIGHWAY, SAMPLE CREEK",
+                type: "Bush Fire",
+                warning_level: "Not Applicable",
+                control_status: "Not yet controlled",
+                distance_km: 14.7,
+                updated_at: minutesAgo(8),
+                official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me"
+              }
+            ],
+            planned_burns: [
+              {
+                id: "fixture-planned-1",
+                title: "STATE FOREST PLANNED BURN",
+                type: "Hazard Reduction",
+                warning_level: "Not Applicable",
+                control_status: "Under control",
+                distance_km: 21,
+                updated_at: minutesAgo(25),
+                official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me"
+              }
+            ],
+            readiness_items: [
+              {
+                id: "plan",
+                label: "Household bush fire survival plan reviewed",
+                entity_id: "input_boolean.fixture_fire_plan"
+              },
+              {
+                id: "bag",
+                label: "Go-bag checked",
+                entity_id: "input_boolean.fixture_go_bag"
+              }
+            ],
+            fire_weather_warnings: [
+              {
+                id: "fixture-weather-warning",
+                title: "Fire Weather Warning for the fixture district",
+                published_at: minutesAgo(35),
+                link: "https://www.bom.gov.au/nsw/warnings/"
+              }
+            ],
+            alert_targets: ["notify.fixture_phone"],
+            alerts_assigned: true,
+            feed: {
+              status: "ok",
+              age_seconds: 120,
+              stale_after_seconds: 2700,
+              last_successful_update: minutesAgo(2),
+              source_name: "NSW Rural Fire Service",
+              official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me",
+              geo_location_source: "nsw_fire_watch"
+            }
+          }
+        };
+
+        const hass = {
+          states: {
+            "sensor.fixture_nsw_fire_watch": summary,
+            "input_boolean.fixture_fire_plan": {
+              state: "on",
+              attributes: { friendly_name: "Fire plan reviewed" }
+            },
+            "input_boolean.fixture_go_bag": {
+              state: "off",
+              attributes: { friendly_name: "Go-bag checked" }
+            },
+            "geo_location.fixture_advice_fire": {
+              state: "8.4",
+              attributes: { friendly_name: "Fixture Advice fire" }
+            },
+            "geo_location.fixture_unclassified_fire": {
+              state: "14.7",
+              attributes: { friendly_name: "Fixture unclassified fire" }
+            }
+          },
+          services: {},
+          callService: async () => undefined
+        };
+
+        window.loadCardHelpers = async () => ({
+          createCardElement: () => {
+            const map = document.createElement("div");
+            map.style.cssText =
+              "min-height:330px;display:grid;place-items:center;background:#101820;color:#aab7c4";
+            map.textContent = "Deterministic Home Assistant map placeholder";
+            return map;
+          }
+        });
+
+        const mount = (id, config) => {
+          const card = document.createElement("nsw-fire-watch-card");
+          card.setConfig(config);
+          card.hass = hass;
+          document.getElementById(id).append(card);
+        };
+
+        mount("compact-fixture", {
+          entity: "sensor.fixture_nsw_fire_watch",
+          title: "NSW Fire Watch",
+          compact: true
+        });
+        mount("full-fixture", {
+          entity: "sensor.fixture_nsw_fire_watch",
+          title: "NSW Fire Watch",
+          compact: false,
+          show_map: true,
+          show_readiness: true,
+          max_incidents: 10
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <header class="fixture-header">
+      <h1>NSW Fire Watch visual fixture</h1>
+      <p>Fake data only. Compact Home card and full command-centre card render from the same state.</p>
+    </header>
+    <main class="fixtures">
+      <section class="fixture-case">
+        <h2>Compact Home card</h2>
+        <div id="compact-fixture"></div>
+      </section>
+      <section class="fixture-case">
+        <h2>Full command centre</h2>
+        <div id="full-fixture"></div>
+      </section>
+    </main>
+  </body>
+</html>

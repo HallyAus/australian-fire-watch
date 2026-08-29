@@ -1,0 +1,23 @@
+# NSW Fire Watch Community dashboard strategy
+#
+# Load the integration's frontend module as a Home Assistant dashboard resource:
+#   /api/nsw_fire_watch/frontend/nsw-fire-watch-panel.js
+# Then create a dashboard with this YAML, or select "NSW Fire Watch" under
+# Settings > Dashboards > Add dashboard > Community dashboards (HA 2026.5+).
+#
+# The summary entity is auto-discovered when there is one configured location.
+# If you monitor more than one location, uncomment `entity` and select one.
+
+strategy:
+  type: custom:nsw-fire-watch
+  title: NSW Fire Watch
+  # entity: sensor.nsw_fire_watch_home
+  zone_entity: zone.home
+  geo_location_source: nsw_rural_fire_service_feed
+  show_map: true
+  show_readiness: true
+  # Optional input_boolean helpers appear as tappable readiness checks:
+  # readiness_entities:
+  #   - input_boolean.bush_fire_plan_reviewed
+  #   - input_boolean.emergency_kit_checked
+  #   - input_boolean.vehicle_fuelled
