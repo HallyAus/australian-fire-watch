@@ -15,19 +15,22 @@ deduplicated lifecycle events for assigned alerts.
 
 > [!NOTE]
 > The current build has been deployed and verified on a live Home Assistant
-> installation. The public GitHub repository and first release have not yet
-> been published, so HACS installation from the URL below is not available yet.
-> See [STATUS.md](STATUS.md) for the current release gates.
+> installation. The public repository is available now and can be added to HACS
+> as a custom repository, but it is still a pre-release pilot: the first tagged
+> `v0.1.1` release is waiting for a green CI run. GitHub currently refuses to
+> start the repository's workflow because of an account billing lock; this is an
+> infrastructure gate, not a reported test failure. See [STATUS.md](STATUS.md).
 
 ## Why this is different
 
 - A severity-first hero shows Emergency Warning, Watch and Act, or Advice before
   maps and secondary detail.
+- The incident list is nearest-first for fast local scanning, while the hero's
+  priority incident remains warning/severity-first so a more distant Emergency
+  Warning cannot be hidden by a nearby lower-level incident.
 - Official warning level, incident type, control status, proximity, and fire
   danger rating remain distinct. A nearby uncontrolled incident does not get
   mislabelled as an official Emergency Warning.
-- Incidents rank by warning, proximity, control status, and recency instead of
-  distance alone. Planned burns have their own section.
 - Today and tomorrow use the Australian Fire Danger Rating System (AFDRS), with
   Total Fire Ban state and source timestamps.
 - Stale, missing, or malformed data is visibly unavailable; it is never shown as
@@ -38,14 +41,20 @@ deduplicated lifecycle events for assigned alerts.
 - A bundled, responsive panel works inside the authenticated Home Assistant UI
   and Companion App. No separate web login, worker URL, shared secret, or cloud
   account is required.
+- A compact command brief answers what matters now, keeps a sticky **Home** exit
+  visible on mobile, and progressively discloses forecast, readiness, planned
+  burn, and source detail.
+- A locally bundled MapLibre renderer uses OpenFreeMap's Liberty vector style,
+  starts near home at zoom 11, will not zoom farther out than zoom 9, and needs
+  no map API key or additional signup.
 - An optional automation blueprint assigns alerts to a Companion App device with
   bounded acknowledgement and snooze controls.
 
 ## Install with HACS
 
-This project is designed to be distributed as a HACS **Integration** custom
-repository. Complete these steps after the public repository and first release
-have been published:
+This project is distributed as a HACS **Integration** custom repository. Until
+the first tagged release is published, HACS installs the current default branch;
+treat that build as a pilot and keep a Home Assistant backup for rollback.
 
 1. In HACS, open **Integrations**, then the menu and **Custom repositories**.
 2. Add `https://github.com/HallyAus/nsw-fire-watch` with category
@@ -112,21 +121,45 @@ type: custom:nsw-fire-watch-card
 entity: sensor.home_status
 title: NSW Fire Watch
 compact: true
-show_map: false
+show_map: true
 show_readiness: false
 ```
 
 Replace the example entity with the summary entity created for the monitored
 location. The compact card keeps the current status, priority incident, fire
-danger, feed health, and link to the full panel visible without putting a large
-map ahead of urgent information.
+danger, feed health, a local incident map, and the link to the full panel in one
+mobile-first container. The command brief stays ahead of the map so urgent
+information does not require searching or panning.
 
-The dedicated sidebar panel remains the recommended mobile experience. The
-optional Community dashboard strategy is registered by the same module, but a
-new strategy dashboard can occasionally be evaluated before that module has
-finished loading on a cold frontend start. Reload that dashboard once if Home
-Assistant reports that the strategy is unknown. This cold-load timing does not
-affect the sidebar panel or a normal Lovelace view containing the compact card.
+### Incident map
+
+The card and panel bundle MapLibre GL JS 5.24.0's CSP-compatible browser assets
+inside the integration and render the keyless
+[OpenFreeMap Liberty](https://openfreemap.org/quick_start/) vector style. The map
+centres on the configured Home Assistant zone at zoom 11 and enforces a minimum
+zoom of 9 instead of auto-fitting every incident across NSW. This keeps the
+first view local while still allowing the user to zoom in and inspect markers.
+
+Map attribution remains visible. If WebGL or the public vector-tile service is
+unavailable, the current warning, command brief, and nearest-first incident list
+continue to work and the map area offers an official-source fallback; a map
+failure never changes the fire status. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the bundled software and
+map-data terms.
+
+This renderer is an interim compatibility layer for Home Assistant versions
+whose native map still uses the affected CARTO raster path. Home Assistant has
+already [merged a move to Shortbread vector tiles](https://github.com/home-assistant/frontend/commit/337e8856);
+the bundled renderer can be reassessed and removed after that change ships in a
+supported Home Assistant release and is verified locally and remotely.
+
+The dedicated sidebar panel remains the recommended mobile experience. Home
+Assistant does not await third-party frontend modules before evaluating every
+dashboard path, so the Community strategy—and, on the first frontend load after
+an install or update, the compact card—can briefly be evaluated before the
+module is ready. Reload the dashboard once if Home Assistant reports an unknown
+strategy or custom element. The integration-owned sidebar panel is the reliable
+cold-start path.
 
 ### Household readiness helpers
 
@@ -141,13 +174,14 @@ safe.
 ### Summary payload and totals
 
 Home Assistant limits the size of state attributes stored by the recorder. The
-summary sensor therefore includes the first 10 ranked active incidents and the
-first 4 planned burns in its `incidents` and `planned_burns` attributes. The
-complete publisher totals remain available as `incident_count` and
-`planned_burn_count`, and the dashboard labels any rows omitted from its compact
-payload. All generated `geo_location` entities remain available to the native
-map. This trimming protects recorder health; it does not reinterpret a missing
-row as a resolved incident or an all-clear.
+summary sensor therefore includes the 10 nearest active incidents and the 4
+nearest planned burns in its `incidents` and `planned_burns` attributes. The
+severity-first `highest_priority_incident` is calculated separately and is not
+changed by this display order. Complete publisher totals remain available as
+`incident_count` and `planned_burn_count`, and the dashboard labels any rows
+omitted from its compact payload. All generated `geo_location` entities remain
+available to Home Assistant. This trimming protects recorder health; it does
+not reinterpret a missing row as a resolved incident or an all-clear.
 
 ## Assigned mobile alerts
 
@@ -371,6 +405,13 @@ remain in Home Assistant. The integration makes read-only HTTPS requests to the
 official data publishers and does not run a relay, analytics service, or project-
 owned cloud backend. Location coordinates come from the selected Home Assistant
 zone and are not embedded in this repository or notification blueprint.
+
+When a dashboard map is enabled, the browser also requests its style and visible
+map tiles directly from the public OpenFreeMap service. Those tile coordinates
+approximate the area being viewed (initially the monitored zone), and the service
+receives normal request metadata such as the client IP address. Set
+`show_map: false` on the card or dashboard strategy to opt out; incident status,
+distance, warnings, and official links continue to work without the map.
 
 The Home Assistant Companion App's own push and remote-access services operate
 under their normal configuration. Review those services separately if the

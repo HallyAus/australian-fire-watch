@@ -68,6 +68,7 @@ from .model import (
     incident_notification_priority,
     normalize_warning,
     sort_incidents,
+    sort_incidents_by_distance,
     track_danger_lifecycle,
     track_incident_lifecycle,
 )
@@ -433,6 +434,9 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _compose_data(self) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
         _discard_expired(self._snoozed, now)
+        # `_incidents` remains priority ordered for qualification, status, hero
+        # and lifecycle decisions. Only the human-facing lists are proximity
+        # ordered, so a nearby low-level item cannot outrank an official warning.
         qualifying = [
             incident for incident in self._incidents if self._qualifies(incident)
         ]
@@ -443,13 +447,15 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         status = self._summary_status(qualifying)
         recommended = _recommended_action(status)
+        display_incidents = sort_incidents_by_distance(self._incidents)
+        display_planned = sort_incidents_by_distance(self._planned)
         incident_dicts = [
             self._incident_dict(incident)
-            for incident in self._incidents[:SUMMARY_INCIDENT_LIMIT]
+            for incident in display_incidents[:SUMMARY_INCIDENT_LIMIT]
         ]
         planned_dicts = [
             self._incident_dict(incident)
-            for incident in self._planned[:SUMMARY_PLANNED_LIMIT]
+            for incident in display_planned[:SUMMARY_PLANNED_LIMIT]
         ]
         warning_level = (
             qualifying[0].warning_level
@@ -457,12 +463,19 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else None
         )
         location_name = str(self.config.get(CONF_NAME, DEFAULT_NAME))
+        zone_entity_id = str(self.config.get(CONF_ZONE, DEFAULT_ZONE))
+        monitored_latitude, monitored_longitude = self._home_coordinates()
         alert_targets = _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
         return {
             "status": status,
             "entry_id": self.entry.entry_id,
             "integration": DOMAIN,
             "location_name": location_name,
+            "zone_entity_id": zone_entity_id,
+            "monitored_location": {
+                "latitude": monitored_latitude,
+                "longitude": monitored_longitude,
+            },
             "summary": _summary_text(status, highest, self._feed),
             "recommended_action": recommended,
             "official_warning_level": warning_level,

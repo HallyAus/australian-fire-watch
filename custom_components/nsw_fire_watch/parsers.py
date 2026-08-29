@@ -82,7 +82,13 @@ def _parse_datetime(
             pass
     try:
         result = parsedate_to_datetime(text)
-        return result.replace(tzinfo=timezone.utc) if result.tzinfo is None else result
+        if result.tzinfo is None:
+            result = result.replace(
+                tzinfo=ZoneInfo("Australia/Sydney")
+                if assume_nsw_local
+                else timezone.utc
+            )
+        return result.astimezone(timezone.utc)
     except (TypeError, ValueError, OverflowError):
         pass
     for fmt in ("%d/%m/%Y %I:%M:%S %p", "%d %b %Y %H:%M", "%d/%m/%Y %H:%M:%S"):

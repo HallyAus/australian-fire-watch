@@ -9,9 +9,12 @@ configuration entry, official feed refresh, entities, same-origin sidebar panel,
 bundled frontend, and mobile-width authenticated view have been verified after a
 valid Home Assistant configuration check and restart.
 
-The project remains pre-release for other users: the public GitHub repository
-and first SemVer release have not yet been created, so it cannot yet be added to
-HACS as a custom repository.
+The public repository is available at
+<https://github.com/HallyAus/nsw-fire-watch> and can be added to HACS as a custom
+repository. It remains a pre-release pilot until the first tagged `v0.1.1`
+release is cut from a green CI run. GitHub currently refuses to start workflow
+jobs because of an account billing lock; this external gate is not a reported
+test failure.
 
 ## Implemented
 
@@ -22,11 +25,17 @@ HACS as a custom repository.
 - Primary NSW RFS fire-danger/Total Fire Ban data, with optional Bureau
   four-day Fire Behaviour Index and NSW land-warning context. No additional
   account, signup, API key, relay, or paid service is required.
-- Warning-first ranking that keeps warning, control status, incident type,
-  distance, and planned burns separate.
-- Mobile-first frontend with a reliable sidebar panel, compact Home card, source
-  timestamps, official links, AFDRS/Total Fire Ban presentation, incident
-  detail, planned-burn separation, feed health, and accessible touch targets.
+- Separate ordering for separate jobs: the hero/alert priority stays
+  warning-first, while active and planned-burn display lists are nearest-first;
+  warning, control status, incident type, and distance remain distinct facts.
+- Mobile-first frontend with a consolidated command brief, sticky Home exit,
+  compact Home card and map, source timestamps, official links, AFDRS/Total Fire
+  Ban presentation, progressively disclosed incident/forecast/readiness/source
+  detail, and accessible touch targets.
+- Locally bundled MapLibre GL JS 5.24.0 CSP assets with OpenFreeMap Liberty
+  vector tiles: no key or signup, initial zoom 11, minimum zoom 9, persistent
+  attribution, and a graceful official-source fallback that cannot alter status
+  or incident lists.
 - Same-session access through the Home Assistant frontend/Companion App using
   its configured local or Home Assistant Cloud/Nabu Casa route. There is no
   Worker URL, separate snapshots login, shared secret, or second auth store.
@@ -42,16 +51,20 @@ HACS as a custom repository.
   Advice/test/clearing messages.
 - Optional tappable readiness `input_boolean` helpers, with wording that never
   equates checklist completion with safety.
-- Recorder-safe summary payload trimming (10 ranked incidents and 4 planned
-  burns) while retaining full publisher totals and map entities.
+- Recorder-safe summary payload trimming (10 nearest incidents and 4 nearest
+  planned burns) while retaining a separate severity-first priority incident,
+  full publisher totals, and map entities.
 - HACS, hassfest, Python, JSON, packaging, and unit-test workflow.
 - Migration, mobile/Nabu Casa behaviour, safety, rollback, privacy, and source
   attribution documentation.
 
 ## Verified deployment evidence
 
-- On 2026-08-29, all 8 packaging/document safety checks and all 31 repository
-  unit tests passed after the documentation update.
+- On 2026-08-29, all 35 repository tests passed after the final mobile, map, and
+  timestamp-normalisation changes. Ruff, Python compilation, JavaScript syntax,
+  packaging, JSON/YAML parsing, and diff checks also passed. The suite guards
+  every bundled MapLibre asset, licence/notice, provider reference, and zoom
+  floor.
 - Production configuration check completed successfully before restart.
 - Integration loaded from the production custom-components directory and the
   imported config entry created its summary, danger, priority, count, health,
@@ -61,27 +74,45 @@ HACS as a custom repository.
   of notifications for pre-existing incidents.
 - `/nsw-fire-watch` and its same-origin JavaScript bundle loaded inside an
   authenticated Home Assistant session and were inspected at a mobile viewport.
-- The deployed dashboard showed today/tomorrow fire-danger data, priority
-  incident information, planned burns, readiness items, source health, and the
-  lower-priority map in the intended stress hierarchy.
+- The keyless map was exercised locally and through Home Assistant Cloud/Nabu
+  Casa: both the compact Home card and command centre rendered at initial zoom
+  11/minimum zoom 9, contacted OpenFreeMap, made no API-key request, and retained
+  the official-source fallback independently of incident status.
+- The sticky Home control returned from `/nsw-fire-watch` to
+  `/lovelace/default_view`; the Home dashboard retained all unrelated cards and
+  now enables the compact Fire Watch map.
+- Live RFS wall-clock `UPDATED` values were verified as Australia/Sydney before
+  UTC conversion, fixing future-looking ages while preserving the publisher's
+  timezone-aware CAP timestamps.
+- The dashboard keeps today/tomorrow danger, Total Fire Ban state, the
+  severity-first priority incident, and nearest incidents in its first mobile
+  brief, with the local map next and lower-priority planned-burn, readiness, and
+  source detail behind disclosure controls.
 
 ## Remaining release gates
 
-- Run the final full unit, packaging, Python, JSON/YAML, and frontend syntax
-  checks after the release contents are frozen.
-- Exercise `nsw_fire_watch.test_alert` on the assigned Companion App device over
-  both local Wi-Fi and configured remote access and verify the clearly labelled
-  test remains non-critical.
+- Restore GitHub Actions execution by clearing the account billing lock, then
+  require a green HACS, hassfest, Python, JSON/YAML, packaging, and frontend
+  syntax run before tagging `v0.1.1`.
+- Confirmed the clearly labelled Advice test service completed through the
+  assigned Companion App path at normal priority. The authenticated dashboard
+  was also verified through both local Wi-Fi and configured remote access.
 - Observe incident/danger lifecycle behaviour through further healthy refreshes,
   including escalation bypassing snooze and cautious resolution wording.
-- Publish the GitHub repository and first SemVer release before asking other
-  users to add it as a HACS custom repository.
+- Publish the first SemVer release only after that green CI run. Until then,
+  custom-repository installs track the pre-release default branch.
 
 ## Known limitations
 
 - Third-party custom integrations are not reviewed or supported by NSW RFS, the
   Bureau of Meteorology, Home Assistant, or HACS.
 - Source feed availability and update timing are outside this project's control.
+- The incident basemap depends on the public OpenFreeMap service and WebGL. It
+  has no API-key/signup dependency or service-level guarantee; its failure is
+  isolated from the warning brief/list and produces an official-source fallback.
+- The bundled renderer is an interim compatibility layer. Reassess and remove
+  it after Home Assistant's merged Shortbread vector-map change ships in a
+  supported release and passes local plus remote Companion App verification.
 - RFS point/polygon location time can differ from incident-detail update time;
   unmapped incidents may be placed at an approximate area location.
 - Mobile push, actionable responses, and remote panel access depend on the user's
@@ -89,13 +120,13 @@ HACS as a custom repository.
   configuration.
 - Repository-root blueprints are not copied by a HACS Integration install and
   must be imported from the documented raw URL.
-- A Community dashboard strategy may be evaluated before the frontend module is
-  ready on a cold load and can require one dashboard reload. The sidebar panel
-  and a normal Lovelace view using the compact card are the reliable primary
-  paths.
-- Home Assistant Brands registration is not yet complete; the HACS workflow
-  ignores only that custom-repository check. It must be resolved before seeking
-  inclusion as a default HACS repository.
+- A Community strategy or compact card can be evaluated before the frontend
+  module is ready on the first cold load after install/update and can require
+  one dashboard reload. The integration-owned sidebar panel is the reliable
+  cold-start path.
+- Local Home Assistant brand icons are bundled at 256 px and 512 px. Home
+  Assistant releases before 2026.3 do not use local custom-integration brand
+  assets, but this does not affect integration functionality.
 
 ## Rollback posture
 

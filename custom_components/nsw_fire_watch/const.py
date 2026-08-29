@@ -6,7 +6,7 @@ from datetime import timedelta
 
 DOMAIN = "nsw_fire_watch"
 NAME = "NSW Fire Watch"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 PLATFORMS = ["sensor", "binary_sensor", "geo_location"]
 

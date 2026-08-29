@@ -24,6 +24,7 @@ from custom_components.nsw_fire_watch.model import (  # noqa: E402
     incident_notification_priority,
     incident_snapshot,
     sort_incidents,
+    sort_incidents_by_distance,
     track_incident_lifecycle,
 )
 
@@ -85,6 +86,63 @@ class IncidentModelTests(unittest.TestCase):
             is_fire=True,
         )
         self.assertEqual(sort_incidents((unclassified, advice))[0].id, "advice")
+
+    def test_display_list_is_nearest_without_changing_alert_priority(self) -> None:
+        emergency = Incident(
+            id="emergency",
+            title="Distant emergency",
+            warning_level="Emergency Warning",
+            distance_km=40,
+            is_fire=True,
+        )
+        nearby = Incident(
+            id="nearby",
+            title="Nearby unclassified fire",
+            warning_level="Not Applicable",
+            distance_km=2,
+            is_fire=True,
+        )
+        unknown = Incident(
+            id="unknown",
+            title="Unknown distance",
+            warning_level="Watch and Act",
+            distance_km=None,
+            is_fire=True,
+        )
+
+        incidents = (nearby, unknown, emergency)
+        self.assertEqual(
+            [item.id for item in sort_incidents_by_distance(incidents)],
+            ["nearby", "emergency", "unknown"],
+        )
+        self.assertEqual(sort_incidents(incidents)[0].id, "emergency")
+
+    def test_planned_display_list_is_nearest_first(self) -> None:
+        farther = Incident(
+            id="farther",
+            title="Far hazard reduction",
+            distance_km=30,
+            is_planned=True,
+        )
+        nearer = Incident(
+            id="nearer",
+            title="Near hazard reduction",
+            distance_km=5,
+            is_planned=True,
+        )
+        unknown = Incident(
+            id="unknown-planned",
+            title="Unlocated hazard reduction",
+            distance_km=None,
+            is_planned=True,
+        )
+        self.assertEqual(
+            [
+                item.id
+                for item in sort_incidents_by_distance((farther, unknown, nearer))
+            ],
+            ["nearer", "farther", "unknown-planned"],
+        )
 
     def test_small_size_changes_do_not_create_update_churn(self) -> None:
         original = Incident(id="fire-1", title="Fire", size_ha=1.0)

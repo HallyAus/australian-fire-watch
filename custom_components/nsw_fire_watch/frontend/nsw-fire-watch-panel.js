@@ -24,6 +24,66 @@ const BOM_ATTRIBUTION_URL =
 const BOM_ATTRIBUTION_IMAGE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAi4AAAAWCAYAAADn/Bc2AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAADjBJREFUeNrsnW2MVdUVhvcwQIePDlQxkFYcC1GBIUL8lloxoUXUHxUTS2JisQnYTmOUxmnqH6cW/9iICTSmtGJTqYkJNrH0hzrSkkBrUYIlgxkETKDg0ARSaIEiUAXpefbc93bP4XzdO/fCDK43OZl7z9lnr7XX/ljvXmtfaLiqbc1ZZzAYDAZDBWhtaTYjGKpCy5AeN3voO25a467o8/74423RtSG6ljc9sm9v0vsNRlwMBoPBYMTFUG9c1nDYtX3hJTe18cOir6yOriURgTkS3hxipjQYDAaDwVBP3NDY5Z4Z8XQlpAUsjK69p55vmWnExWAwGAwGw3kjLY83rXQjG05W8/qY6NoQkhcjLgaDwWAwGOoCpYf6CZGXsUZcDAaDwWAw1A2QliojLUnkZbkRF4PBYDAYDHUBvx4qcqalcer9btjXf1KkyoWnnm+5shBxmX7Fl9xrT3zTffiLb/uLz7OmjB8wxnn6gRv8NZgwGHW+2LDgtklu/dJ7Ep9NHDfKP2O889nGyOAB65XWqhWLbu3zLFzHxowcPqDbga5blt17cey672x1v//xvPLFd+G+Wya5pxbcWLiuGVde6uvIw9yZE90vv3f7eW0n7UA3ZNfafqHNag10xq61xt3D1hcqd/af2z15GXrTD4sUX1KIuPzm0dlu+0f/dlf/4FV/8ZkFYaBP/DheitpxoRwBRK+oE3x47hSva63aTH2qN81RF63j8wL6q3nkMD/eew59PGjHJ/0mRx1ecYc+2HDXdRPLbeFzVj+GZBRSUwkgDhAIQ/X40bdmeqfYvnqTm/+zTv938oQx/n6S44fIDEaMHzuy3M51XT0XRAfsV4TgFCV//cW0gr8g+uzQB+6T1xdFxGWJJzA5mDk0rwSTHYLy5tb/d8Syte+Xnx396BObmTXGC+t2+qsWeOjnGwdEHYMREPSLaUxp3kJacPad1+3vM6+TQFRq4rjR3hZLH7jerarh2OwPFpeI9I3ta93RE+lrEGsXbVjz9p5MglNvoAc6Y0f0aY0IFLpf7MBBzpoywT21ZovbfeCYv8ff1zbv8cRl8ua+/xYM5SoFRGf8mBHu5Y0fuuOnPr3gbVY7BzK27T3sSWS9Ma7hcOGyn/3jXffp+nY3bM4y//3Mjt+lFZ2dS1zYbXK133ut64wWORYtFoonX3mvD7lZsWhWeTezaedB99iL7/hy7PB7Dh0v73xYKJnE+s6CorrYHSJHcrlPXUmLKeWoBxmUlZOhXnatimzwPo6X3axk8ox7oTwRsqRFOa197MhpH9+T2hPu+hRBobyIwLzrLvdtAbTju9H97qgd6MU7lEM/RTsog9y4TbADzkg6UMdjL27ydkGuyqut7FKJJMRtldZ+1cGz/uqTN1ZeWLfD2zCUy5jhGfohX/bVGEhzzHHZyFwatVeyu1OISTgusNWcjtfPkY9eRccEuvFZZXlfbQxtHB+fWWMkbkdshPxKQH1KA+t97EmUARn3PfNHrxO2pKxsHe9f2kqbsHH8Wdhe9Qv1Ur/GEnKTCFR8PdDYQF+1G11VXxzcoxy68B5/tV6EkZf4eiJyRt3cG3PFcD8ORDTS2p6lM/3FM9lRZAvZD8+dmjsH88piV+TyjHYjg7H4jY43vL34HOof9kM9QWQFR46jDLFp5wE3f2dnidyM6xMxeH/fYffau3uid5td253T/V8522V/6DqHtMy/+aue8CSRllFNw/pEFla+tb0cDYE4QapENp4t1U16CRL04OyrfXnkepJV0gPdn43pAUFTugt56KP3Qhkr3+r2f5Gxbtt+rzv1IScEqSbkj470p10Hj5yM3jtajuwk6YP83nTPpb4MOmAf6hFoF7aVvnHykmTzashkFhon3ekaxk1LJzB71nny0jD6y+70lhWJZQqlihjgEIN5pfAsEzpMHbz06B3uWDQRcYZMjubS4iXwnfssxkwYJjRlmfBMRu2KFtw22TsJnjHhk9JRTEycLYsL5Vj0wvQLk5dFkGdaeEUCWGRYRPhMvZTlfcrKKSWH8LPbp/Ygj3bEw9EiT4D2hY6ed3iXe4tj6RgtdrxLGXRP0hHnph0c5XoXucmJO27pSt04S/pAui8uEaas6Ft/9cmzZRYYf7yDrcIxgO7oxdjiPn0bpjWVfsHRSzb9kBWdEDmR/qF82l10TGBzdFvz9u6yzeJ9o6hWOD7j8y8+RpDfWRrnyCcqkpXOC1NG2Im6kjYFaZAtsA2p4+aSjSUb22r+ab4pzZY2r7IgAqDxyZymH+MOF/lpzpcNE/LRhzHBmIxH0TRm6CfkrCqR87tKfQ3B6C6lyfmc1fYsneP9ybusEzyXbVmLeD/JXlllaRvRsKOl8UhbtCZyT5tF6YE9qKf7PEQUiYRUGwXBOfMuzvXBFevdhLEjvKNPIi1pUQ4cP6SAOkRGAOkUSA33uSAFYYpl1jUTvExIzk8XRHbfdaCsB6Qgns7CwX//V3/2nynHd+qDAHBfMiAL6OTJyYzLve5x0kL9/kzQ5r/79yBr46O2C2n6iCyhM5+RQ3shNfH2p2HujIllm6M3+ot4DSQMLVIoHmHRDkU7PSYJu1qVZfKHiziLNve1UGp3pe/sBqZfcUn5QGQIFptwgdWuSTsNLfYiOB2l3U/eWQHtQESE0s6ecL9I+8IdfHPBsz/h4sGCGicNtIMy2Jrn3R/9K2pfT2I9lEUn/nbEIj5JkKz4WZrpMXvXUp8itswC9fAOxCgcA3IscpzIwEFn9SN6yUkVheQXaQfEOxwTirBgs0oOtieNEcmPO7ljgU2yUkVysIqiFsGqUr2MDxHz0MYTXW9KmXYrwipdFaWpBPNKUR7ZjTmmSOSbW4ufH+A92oljV8o7JI6MJRA/CM26E5eT1/Ysnde8ffyc/pxXIhKSw9/2Q72kSX0V2iOt7PZShGXV1p195h9rHKCP0YO2ci+e+q8ncIIzAqcbEgqc6LptyXrgjLkU2aAeEQMdIpUTPn7qdKZ8RVggDiIN1EH9aec8iIzwrvRAVuj0eUbkIi9NRlTl4JET5WgHkRRFM3iWRLh4L6xfZATdK9EHYtZLbEZ4IsR7uetNRIjaI8IoEtcW2Xx8Qv/1B2f2vOUcV1I0Zur9bshNS3zKKCNVlE9cGPDs8gg5KrypfDG7jawFqZLFiglVJNydVyepACYyEx99FWZPAiFUFhdImRbaSuR9ccTwsuOqBsdO5O9EtPtGN4WK2bGFMlmkuKf+wgY4jyxbKlxdaZ69P/qsyjgbkWTnOAGUjKw+YRwlhdsrPZSZRuCLjolaIWmMSH61oX4RU/qws0oHlpQS7Z1/1/u1AfuviqXILgTUVqW7OrfuT4x4EYEregg7re0XCiIoaWCMhKnLkFzVG7sPHvPRAJxxmC66NvqOE8eZJ0dK8vfUHIIlrYGTTUtnfJwS7cGpK20SJ0whGZIeyKr07MqopmGZ99MiUaOb0vuzUn2WLbzVEySiOvRB3i+H6CPIjoih3q/23M6hs5cWPucy5Cu3+BRRHmmJsDE3VSRmHqZtmADsSNg9MinCcLAOoTFRKnHolGdx0eTCKSb9CkdhT4XFWRRFTrQjogyys0LnyGLCawKnlc1q339O1vdgsn7WqdAujgB7tMYcgX4txDMcBs4o7yBikh1JAWYRvf7qkzdWes9cXFIeY2kOL0t3OSaNG3bR6JImuxpcyDGRJh8SXvQXSeH5DM1R2V0RiCzZ3UHkR7L1yxtFRCGPzK9w/oqESX5W5Kmz1McajyIblaS3QlspYhVfkxgvYf1KqYXzR+teXtsr1VmkUbJ6N4OjEqMhWWVpQ28ksu+zpDnjD2Vv3X8eieMB7/SUNgH8/Q7Rlq6eVOfNO0QqHpx9TdmZL1s4q086R2dGZpRIUKV6kaoRUaHepJ9OF9GjqAyIAO19f2+2I/9r9B5ylI7CXmpfJfp8bcoET5IUcZp/c/6vtUjP6awOxA5517ZU/zPpD85cXYy0jJvmht/zojv9l6V5pAV0FTqcy4FAds36NwUUGpfTJ2TOc4VPdWCt0h0cERylLpSeiu+CdGhXoW4dtgt3FqpDIVMWdJ0tUSqBOpjoapPaQtm47rVonxbN8HBukUUXBxCmcyAC8YVQhz+VZoun9sL62ktpFJ0xCtMNLwR9Wi99smypuln46bf0swsfp+reOXK/J9mSrcO5SbL7k+OvxZhIIu8an3ljJEl+PL0QJ5MhOceRqbzOd1FXkQ0HskUIk/rw6ZJeIg0cboXEkEaC5CJLRC+NnCpiphSOxlA1KQ6li5Le9anutaO8Pjo8SxtUljElMkN0MqvtWTontRP78JyopfoxTOlVUjbsQ9k9jMToPBrkRaltpeaTDovXEkRDenfvs8r3cKbxsx1xkCYioqJ0DtEAnKkIkBy5zm6QCioaGeCd8WNnlslKeDi3qB5FZIxuau0jg/MqeWd+ICbYRukgHc4tog8Hm3kHskQdnNV5+bE5ZZtzcBeSQ0ooCb+N6oG8qG6RQ0A7kJXXbyHe+HSOu31o/o8GGi5r9YTl9LZfF6l2ecNVbWvOOoPBYDAMSkBG/rT0bh/RYoOm7/qlG1GW1lJkOkzj9hetLc1mfEMuOpqeq/R/hM7C6qZH9j1k/+S/wWAwDGIQ2el45W/+s371CWnRPUiLom0dA+hsjuHzgZX/fcidOFuTA778HnwJHyziYjAYDIaKYREXQ1Hc0NjlHm9a2V/SckfTI/t8Ps8iLgaDwWAwGOqG987MdM+daqs28tKHtBhxMRgMBoPBcF7IyxMnn3Q7Cv7SqITV0XVlSFqApYoMBoPBUDEsVWSoFi1Detzsoe+4aY27os/n/Dx/W3RtiK7lEWHZm/T+/wQYAJD8oulFxB3kAAAAAElFTkSuQmCC";
 const DEFAULT_GEO_SOURCE = "nsw_rural_fire_service_feed";
+const FRONTEND_BASE = "/api/nsw_fire_watch/frontend";
+const MAPLIBRE_VERSION = "5.24.0";
+const MAPLIBRE_SCRIPT = `${FRONTEND_BASE}/vendor/maplibre-gl-csp.js?v=${MAPLIBRE_VERSION}`;
+const MAPLIBRE_WORKER = `${FRONTEND_BASE}/vendor/maplibre-gl-csp-worker.js?v=${MAPLIBRE_VERSION}`;
+const MAPLIBRE_CSS = `${FRONTEND_BASE}/vendor/maplibre-gl.css?v=${MAPLIBRE_VERSION}`;
+const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const OPENFREEMAP_URL = "https://openfreemap.org/";
+const MAP_DEFAULT_ZOOM = 11;
+const MAP_MIN_ZOOM = 9;
+
+let mapLibrePromise = null;
+
+const configureMapLibreWorker = (maplibregl) => {
+  if (!maplibregl) return;
+  if (typeof maplibregl.setWorkerUrl === "function") {
+    maplibregl.setWorkerUrl(MAPLIBRE_WORKER);
+  } else {
+    maplibregl.workerUrl = MAPLIBRE_WORKER;
+  }
+};
+
+const loadMapLibre = () => {
+  if (window.maplibregl) {
+    configureMapLibreWorker(window.maplibregl);
+    return Promise.resolve(window.maplibregl);
+  }
+  if (mapLibrePromise) return mapLibrePromise;
+
+  mapLibrePromise = new Promise((resolve, reject) => {
+    const finish = () => {
+      if (!window.maplibregl) {
+        fail(new Error("MapLibre did not register its browser API"));
+        return;
+      }
+      configureMapLibreWorker(window.maplibregl);
+      resolve(window.maplibregl);
+    };
+    const fail = (error = null) => {
+      document
+        .querySelector("script[data-nsw-fire-watch-maplibre]")
+        ?.remove();
+      mapLibrePromise = null;
+      reject(error || new Error("The local MapLibre bundle could not be loaded"));
+    };
+    const existing = document.querySelector("script[data-nsw-fire-watch-maplibre]");
+    if (existing) {
+      existing.addEventListener("load", finish, { once: true });
+      existing.addEventListener("error", fail, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = MAPLIBRE_SCRIPT;
+    script.async = true;
+    script.dataset.nswFireWatchMaplibre = MAPLIBRE_VERSION;
+    script.addEventListener("load", finish, { once: true });
+    script.addEventListener("error", () => fail(), { once: true });
+    document.head.append(script);
+  });
+  return mapLibrePromise;
+};
 
 const WARNING_WEIGHT = Object.freeze({
   emergency_warning: 4,
@@ -97,9 +157,24 @@ const asBoolean = (value) => {
 };
 
 const asNumber = (value) => {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return null;
+  }
   const result = Number(value);
   return Number.isFinite(result) ? result : null;
 };
+
+const validCoordinates = (latitude, longitude) =>
+  latitude !== null &&
+  longitude !== null &&
+  latitude >= -90 &&
+  latitude <= 90 &&
+  longitude >= -180 &&
+  longitude <= 180;
 
 const safeUrl = (value, fallback = null) => {
   if (!isPresent(value)) return fallback;
@@ -299,6 +374,10 @@ const normalizeIncident = (raw, index = 0) => {
 
 const sortIncidents = (incidents) =>
   [...incidents].sort((left, right) => {
+    const leftDistance = asNumber(left.distanceKm) ?? Number.POSITIVE_INFINITY;
+    const rightDistance = asNumber(right.distanceKm) ?? Number.POSITIVE_INFINITY;
+    if (leftDistance !== rightDistance) return leftDistance - rightDistance;
+
     const warningDifference =
       (WARNING_WEIGHT[warningKey(right.warning)] ?? -1) -
       (WARNING_WEIGHT[warningKey(left.warning)] ?? -1);
@@ -309,13 +388,24 @@ const sortIncidents = (incidents) =>
       (CONTROL_WEIGHT[controlKey(left.control)] ?? 0);
     if (controlDifference !== 0) return controlDifference;
 
-    const leftDistance = asNumber(left.distanceKm) ?? Number.POSITIVE_INFINITY;
-    const rightDistance = asNumber(right.distanceKm) ?? Number.POSITIVE_INFINITY;
-    if (leftDistance !== rightDistance) return leftDistance - rightDistance;
-
     const leftUpdated = parseDate(left.updatedAt)?.getTime() ?? 0;
     const rightUpdated = parseDate(right.updatedAt)?.getTime() ?? 0;
     return rightUpdated - leftUpdated;
+  });
+
+const sortIncidentsByPriority = (incidents) =>
+  [...incidents].sort((left, right) => {
+    const warningDifference =
+      (WARNING_WEIGHT[warningKey(right.warning)] ?? -1) -
+      (WARNING_WEIGHT[warningKey(left.warning)] ?? -1);
+    if (warningDifference !== 0) return warningDifference;
+    const controlDifference =
+      (CONTROL_WEIGHT[controlKey(right.control)] ?? 0) -
+      (CONTROL_WEIGHT[controlKey(left.control)] ?? 0);
+    if (controlDifference !== 0) return controlDifference;
+    const leftDistance = asNumber(left.distanceKm) ?? Number.POSITIVE_INFINITY;
+    const rightDistance = asNumber(right.distanceKm) ?? Number.POSITIVE_INFINITY;
+    return leftDistance - rightDistance;
   });
 
 const normalizeDangerDay = (raw = {}, fallback = {}) => {
@@ -484,6 +574,11 @@ const normalizeModel = (hass, config = {}) => {
   }
 
   const attributes = summary.attributes || {};
+  const monitoredLocation =
+    attributes.monitored_location &&
+    typeof attributes.monitored_location === "object"
+      ? attributes.monitored_location
+      : {};
   const danger =
     attributes.danger && typeof attributes.danger === "object"
       ? attributes.danger
@@ -554,7 +649,7 @@ const normalizeModel = (hass, config = {}) => {
   const explicitPriority = attributes.highest_priority_incident
     ? normalizeIncident(attributes.highest_priority_incident)
     : null;
-  const priorityIncident = explicitPriority || incidents[0] || null;
+  const priorityIncident = explicitPriority || sortIncidentsByPriority(incidents)[0] || null;
 
   const feedAttributes =
     attributes.feed && typeof attributes.feed === "object" ? attributes.feed : {};
@@ -675,6 +770,12 @@ const normalizeModel = (hass, config = {}) => {
       attributes.zone_entity,
       "zone.home",
     ),
+    monitoredLatitude: asNumber(
+      firstPresent(monitoredLocation.latitude, attributes.monitored_latitude),
+    ),
+    monitoredLongitude: asNumber(
+      firstPresent(monitoredLocation.longitude, attributes.monitored_longitude),
+    ),
     feed: {
       status: stale ? "stale" : statedFeedStatus,
       stale,
@@ -715,6 +816,9 @@ const icon = (name) => {
     shield:
       '<path d="m12 2 8 3.6V11c0 5-3.4 9.7-8 11-4.6-1.3-8-6-8-11V5.6L12 2Zm-1 13.2 5.5-5.5-1.4-1.4-4.1 4.1-2.1-2.1-1.4 1.4 3.5 3.5Z"/>',
     map: '<path d="m15 4.5-6-2-7 2.4V21l7-2.4 6 2 7-2.4V2.1l-7 2.4Zm-1 13.7-4-1.3V4.8l4 1.3v12.1Zm-10-12 4-1.4v12.1l-4 1.4V6.2Zm16 10.5-4 1.4V6l4-1.4v12.1Z"/>',
+    home: '<path d="m12 3 9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8Z"/>',
+    chevron:
+      '<path d="m8.6 9.2 3.4 3.4 3.4-3.4 1.4 1.4-4.8 4.8-4.8-4.8 1.4-1.4Z"/>',
     external:
       '<path d="M14 3h7v7h-2V6.4l-8.8 8.8-1.4-1.4L17.6 5H14V3ZM5 5h6v2H5v12h12v-6h2v8H3V5h2Z"/>',
     check:
@@ -772,8 +876,71 @@ const STYLES = `
   .app-shell {
     width: min(100%, 1180px);
     margin: 0 auto;
-    padding: 14px 12px 40px;
+    padding: 0 12px 40px;
   }
+
+  .command-nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 58px;
+    margin: 0 -12px 10px;
+    padding: max(7px, env(safe-area-inset-top)) 12px 7px;
+    border-bottom: 1px solid var(--fw-border);
+    background: color-mix(in srgb, var(--primary-background-color, #0b1117) 92%, transparent);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .16);
+    backdrop-filter: blur(16px) saturate(1.15);
+  }
+
+  .home-exit {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    justify-content: center;
+    min-width: 82px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--fw-border);
+    border-radius: 12px;
+    background: var(--fw-surface);
+    color: var(--primary-text-color, #fff);
+    font-weight: 900;
+    text-decoration: none;
+  }
+
+  .home-exit:hover { filter: brightness(1.08); }
+  .command-nav-context { min-width: 0; }
+  .command-nav-context span,
+  .command-nav-context strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .command-nav-context span { color: var(--fw-muted); font-size: .7rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+  .command-nav-context strong { font-size: .96rem; }
+  .nav-feed-status {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    min-height: 44px;
+    color: var(--fw-muted);
+    font-size: .77rem;
+    font-weight: 900;
+  }
+  .nav-feed-status::before {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, .16);
+    content: "";
+  }
+  .nav-feed-status.delayed::before { background: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, .16); }
 
   .app-header {
     display: flex;
@@ -803,6 +970,15 @@ const STYLES = `
   .subtle { color: var(--fw-muted); }
   .small { font-size: .88rem; }
   .nowrap { white-space: nowrap; }
+  .visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+  }
 
   .supplementary-chip, .data-chip, .badge {
     display: inline-flex;
@@ -831,6 +1007,115 @@ const STYLES = `
     background: var(--fw-surface);
     box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
   }
+
+  .command-brief {
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 1px solid var(--fw-border);
+    border-radius: 20px;
+    background: var(--fw-surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+  }
+
+  .brief-status {
+    position: relative;
+    overflow: hidden;
+    padding: 16px;
+    color: white;
+    background: linear-gradient(135deg, #334155, #1e293b);
+  }
+  .brief-status.severity-emergency { background: linear-gradient(135deg, var(--fw-red-dark), var(--fw-red)); }
+  .brief-status.severity-watch { background: linear-gradient(135deg, #7c2d12, var(--fw-orange)); }
+  .brief-status.severity-advice { background: #715b08; }
+  .brief-status.severity-moderate { background: #1e3a4b; }
+  .brief-status.severity-unknown { background: linear-gradient(135deg, #334155, #1e293b); }
+  .brief-status::after {
+    position: absolute;
+    right: -54px;
+    bottom: -92px;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .07);
+    content: "";
+    pointer-events: none;
+  }
+  .brief-heading { position: relative; z-index: 1; display: flex; gap: 11px; align-items: flex-start; }
+  .brief-heading .hero-icon { width: 42px; height: 42px; }
+  .brief-heading .hero-icon .icon { width: 23px; height: 23px; }
+  .brief-heading h2 { margin: 0 0 3px; font-size: clamp(1.45rem, 7vw, 2.2rem); }
+  .brief-action { margin: 0; font-size: 1rem; font-weight: 900; }
+  .brief-summary { position: relative; z-index: 1; max-width: 760px; margin: 10px 0 0; color: rgba(255, 255, 255, .9); font-size: .91rem; }
+  .brief-freshness { position: relative; z-index: 1; display: inline-flex; gap: 6px; align-items: center; margin-top: 10px; color: rgba(255, 255, 255, .84); font-size: .76rem; font-weight: 800; }
+  .brief-freshness .icon { width: 15px; height: 15px; }
+
+  .brief-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-bottom: 1px solid var(--fw-border);
+  }
+  .brief-fact {
+    min-width: 0;
+    min-height: 70px;
+    padding: 10px 12px;
+    border-right: 1px solid var(--fw-border);
+    border-bottom: 1px solid var(--fw-border);
+  }
+  .brief-fact:nth-child(2n) { border-right: 0; }
+  .brief-fact:nth-last-child(-n + 2) { border-bottom: 0; }
+  .brief-fact span { display: block; color: var(--fw-muted); font-size: .68rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+  .brief-fact strong { display: block; margin-top: 3px; overflow-wrap: anywhere; font-size: .98rem; line-height: 1.2; }
+  .brief-fact small { display: block; margin-top: 2px; color: var(--fw-muted); font-size: .74rem; }
+  .brief-fact.rating-catastrophic strong { color: #ff7b7b; }
+  .brief-fact.rating-extreme strong { color: #ff9a67; }
+  .brief-fact.rating-high strong,
+  .brief-fact .ban-declared { color: #ffd75e; }
+
+  .brief-warning-line {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--fw-border);
+    background: rgba(250, 204, 21, .09);
+    font-size: .83rem;
+    font-weight: 800;
+  }
+  .brief-warning-line .icon { color: #facc15; }
+
+  .brief-priority { padding: 12px; border-bottom: 1px solid var(--fw-border); }
+  .brief-priority-header { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .brief-priority-header .eyebrow { margin: 0; }
+  .brief-distance { color: var(--primary-text-color, #fff); font-size: .9rem; font-weight: 900; white-space: nowrap; }
+  .brief-priority .badges { margin-bottom: 6px; }
+  .brief-priority h3 { margin: 0 0 3px; overflow-wrap: anywhere; font-size: 1.02rem; }
+  .brief-priority p { margin: 0; color: var(--fw-muted); font-size: .84rem; }
+  .brief-priority-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 6px; color: var(--fw-muted); font-size: .78rem; }
+  .brief-empty { color: var(--fw-muted); }
+
+  .brief-controls { margin: 0; padding: 10px 12px; }
+  .brief-controls > .button,
+  .brief-controls > .button-link { flex: 1 1 140px; }
+  .brief-alert-options { width: 100%; margin: 0; padding-top: 0; border-top: 0; }
+  .brief-alert-options summary { color: var(--fw-muted); font-size: .85rem; }
+  .brief-alert-options[open] summary { margin-bottom: 8px; }
+  .snooze-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  .snooze-controls label { flex: 1 1 145px; }
+  .snooze-controls select { width: 100%; margin-top: 3px; }
+
+  .operations-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .operations-grid > .surface { margin-bottom: 0; }
+  .detail-hub { margin-top: 12px; padding: 0 14px; }
+  .info-drawer { margin: 0; padding: 0; border-top: 1px solid var(--fw-border); }
+  .info-drawer:first-child { border-top: 0; }
+  .info-drawer > summary { justify-content: space-between; min-height: 58px; padding: 8px 0; list-style: none; }
+  .info-drawer > summary::-webkit-details-marker { display: none; }
+  .drawer-title { display: grid; min-width: 0; }
+  .drawer-title strong { font-size: .98rem; }
+  .drawer-title small { overflow: hidden; color: var(--fw-muted); font-size: .76rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .drawer-chevron { transition: transform 150ms ease; }
+  .info-drawer[open] > summary .drawer-chevron { transform: rotate(180deg); }
+  .drawer-content { padding: 2px 0 14px; }
 
   .hero {
     position: relative;
@@ -957,7 +1242,7 @@ const STYLES = `
     justify-content: center;
     min-height: 66px;
     margin-top: 12px;
-    padding: clamp(20px, 6vw, 33px);
+    padding: 33px;
     border-top: 1px solid var(--fw-border);
   }
   .bom-attribution { display: block; max-width: 100%; min-height: 44px; padding: 11px 0; }
@@ -989,6 +1274,14 @@ const STYLES = `
   .incident-item.severity-watch { border-left-color: #f97316; }
   .incident-item.severity-advice { border-left-color: #facc15; }
   .incident-item h3 { overflow-wrap: anywhere; }
+  .incident-item .badges { margin-bottom: 6px; }
+  .incident-item > h3 { margin-bottom: 5px; font-size: .98rem; }
+  .incident-scanline { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; color: var(--fw-muted); font-size: .8rem; }
+  .incident-scanline > strong { color: var(--primary-text-color, #fff); }
+  .incident-scanline .icon { width: 14px; height: 14px; }
+  .incident-detail-drawer { margin-top: 7px; padding-top: 0; border-top: 0; }
+  .incident-detail-drawer summary { min-height: 44px; color: var(--fw-link); font-size: .82rem; }
+  .incident-detail-drawer .incident-actions { margin-top: 7px; }
 
   .empty-state { padding: 18px; border: 1px dashed var(--fw-border); border-radius: 13px; color: var(--fw-muted); text-align: center; }
   .empty-state .icon { width: 30px; height: 30px; margin-bottom: 5px; }
@@ -996,9 +1289,40 @@ const STYLES = `
   details { border-top: 1px solid var(--fw-border); margin-top: 12px; padding-top: 10px; }
   summary { min-height: 44px; display: flex; align-items: center; gap: 8px; font-weight: 900; cursor: pointer; }
 
-  .map-host { min-height: 330px; overflow: hidden; border: 1px solid var(--fw-border); border-radius: 14px; background: rgba(0,0,0,.1); }
+  .map-host { position: relative; height: 330px; min-height: 330px; overflow: hidden; border: 1px solid var(--fw-border); border-radius: 14px; background: rgba(0,0,0,.1); }
   .map-host > * { display: block; min-height: 330px; }
+  .map-host > .maplibregl-map { width: 100%; height: 100%; min-height: 0; color: #111827; font: inherit; }
   .map-fallback { min-height: 330px; display: grid; place-items: center; padding: 24px; text-align: center; }
+  .map-fallback p { margin-bottom: 10px; }
+  .map-fallback .button-link { margin: 4px; }
+  .map-provider-credit { margin: 8px 2px 0; color: var(--fw-muted); font-size: .66rem; line-height: 1.35; text-align: right; }
+  .map-provider-credit a { color: inherit; }
+  .map-marker {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 3px solid white;
+    border-radius: 50%;
+    background: #64748b;
+    box-shadow: 0 2px 8px rgba(0,0,0,.45);
+    color: white;
+    cursor: pointer;
+  }
+  .map-marker::after { width: 8px; height: 8px; border-radius: 50%; background: currentColor; content: ""; }
+  .map-marker.warning-emergency { width: 34px; height: 34px; background: #b91c1c; }
+  .map-marker.warning-watch { width: 32px; height: 32px; background: #ea580c; }
+  .map-marker.warning-advice { background: #ca8a04; }
+  .map-marker.planned { width: 24px; height: 24px; background: #16804a; }
+  .map-marker.home { width: 28px; height: 28px; border-radius: 8px; background: #1565c0; transform: rotate(45deg); cursor: default; }
+  .map-marker.home::after { transform: rotate(-45deg); background: white; }
+  .maplibregl-popup { max-width: min(280px, calc(100vw - 48px)) !important; }
+  .maplibregl-popup-content { padding: 13px 14px; border-radius: 12px; color: #111827; font: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+  .map-popup-title { margin: 0 0 5px; font-size: .94rem; line-height: 1.25; }
+  .map-popup-meta { margin: 2px 0; color: #475569; font-size: .78rem; }
+  .map-popup-link { display: inline-block; min-height: 36px; margin-top: 7px; color: #0b57a4; font-size: .8rem; font-weight: 800; }
+  .maplibregl-ctrl-group { overflow: hidden; border-radius: 9px; }
+  .maplibregl-ctrl button { min-width: 36px; min-height: 36px; }
 
   .health-grid { display: grid; grid-template-columns: 1fr; gap: 9px; }
   .health-item { padding: 11px; border: 1px solid var(--fw-border); border-radius: 12px; background: rgba(0,0,0,.08); }
@@ -1070,13 +1394,15 @@ const STYLES = `
 
   .compact-danger {
     display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(60px, .7fr) minmax(92px, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     border-bottom: 1px solid var(--fw-border);
   }
-  .compact-metric { min-width: 0; padding: 11px 12px; border-right: 1px solid var(--fw-border); }
-  .compact-metric:last-child { border-right: 0; }
+  .compact-metric { min-width: 0; min-height: 68px; padding: 10px 12px; border-right: 1px solid var(--fw-border); border-bottom: 1px solid var(--fw-border); }
+  .compact-metric:nth-child(2n) { border-right: 0; }
+  .compact-metric:nth-last-child(-n + 2) { border-bottom: 0; }
   .compact-metric span { display: block; color: var(--fw-muted); font-size: .69rem; font-weight: 900; letter-spacing: .055em; text-transform: uppercase; }
   .compact-metric strong { display: block; margin-top: 3px; overflow-wrap: anywhere; font-size: .94rem; line-height: 1.25; }
+  .compact-metric small { display: block; margin-top: 2px; color: var(--fw-muted); font-size: .72rem; }
   .compact-metric.rating-catastrophic strong { color: #ff7b7b; }
   .compact-metric.rating-extreme strong { color: #ff9a67; }
   .compact-metric.rating-high strong,
@@ -1089,13 +1415,22 @@ const STYLES = `
   .compact-priority-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 6px; color: var(--fw-muted); font-size: .8rem; }
   .compact-priority-empty { color: var(--fw-muted); }
 
+  .compact-map { padding: 0 12px 12px; border-bottom: 1px solid var(--fw-border); }
+  .compact-map-heading { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+  .compact-map-heading strong { font-size: .9rem; }
+  .compact-map-heading span { color: var(--fw-muted); font-size: .72rem; }
+  .compact-map-host { height: 240px; min-height: 240px; border-radius: 12px; }
+  .compact-map-host > * { min-height: 240px; }
+  .compact-map .map-fallback { min-height: 240px; padding: 18px; }
+  .compact-map .map-provider-credit { text-align: left; }
+
   .compact-feed-message { margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--fw-border); background: rgba(250,204,21,.09); color: var(--primary-text-color, #fff); font-size: .82rem; }
   .compact-bom-attribution {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 44px;
-    padding: 7px 14px;
+    padding: 20px;
     border-bottom: 1px solid var(--fw-border);
   }
   .compact-bom-attribution img { display: block; width: 320px; max-width: 100%; height: auto; }
@@ -1116,8 +1451,14 @@ const STYLES = `
   .test-controls { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
 
   @media (min-width: 720px) {
-    .app-shell { padding: 20px 20px 50px; }
+    .app-shell { padding: 0 20px 50px; }
+    .command-nav { margin-inline: -20px; padding-inline: 20px; }
     .hero { padding: 24px; }
+    .brief-status { padding: 20px; }
+    .brief-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .brief-fact { border-right: 1px solid var(--fw-border); border-bottom: 0; }
+    .brief-fact:nth-child(2n) { border-right: 1px solid var(--fw-border); }
+    .brief-fact:last-child { border-right: 0; }
     .layout-grid { grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr); }
     .forecast-card { display: grid; grid-template-columns: minmax(140px, .8fr) minmax(170px, 1.2fr); }
     .forecast-rating { min-height: 100%; }
@@ -1128,13 +1469,21 @@ const STYLES = `
   @media (min-width: 1000px) {
     .wide-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr); gap: 12px; }
     .wide-grid > .surface { margin-bottom: 0; }
+    .operations-grid { grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr); align-items: start; }
   }
 
   @media (max-width: 430px) {
-    .app-header { align-items: stretch; flex-direction: column; }
-    .supplementary-chip { align-self: flex-start; }
+    .command-nav-context span { font-size: .64rem; }
+    .command-nav-context strong { font-size: .86rem; }
+    .nav-feed-status { font-size: .7rem; }
     .hero-controls > * { flex: 1 1 auto; }
     .forecast-grid { grid-template-columns: 1fr; }
+    .surface { padding: 13px; border-radius: 16px; }
+    .detail-hub { padding: 0 12px; }
+    .drawer-content .bom-attribution-wrap { padding: 16px; }
+    .official-links .button-link,
+    .test-controls > *,
+    .incident-actions > * { width: 100%; }
   }
 
   @media (max-width: 350px) {
@@ -1333,8 +1682,26 @@ const renderIncident = (incident, priority = false) => {
         "clock",
       )} Updated ${escapeHtml(formatRelative(incident.updatedAt))}</span>`
     : `<span>${icon("clock")} Update time not supplied</span>`;
+  if (!priority) {
+    return `
+      <article class="incident-item ${severityClass(
+        incident.warning,
+      )}" data-incident-id="${escapeHtml(incident.id)}">
+        ${renderBadges(incident)}
+        <h3>${escapeHtml(incident.title)}</h3>
+        <p class="incident-scanline"><strong>${escapeHtml(
+          formatDistance(incident.distanceKm),
+        )}</strong><span>${escapeHtml(incident.type)}</span>${updated}</p>
+        <details class="incident-detail-drawer">
+          <summary>Details &amp; official links</summary>
+          ${renderIncidentMeta(incident)}
+          ${renderIncidentActions(incident)}
+        </details>
+      </article>
+    `;
+  }
   return `
-    <article class="${priority ? "priority-card" : "incident-item"} ${severityClass(
+    <article class="priority-card ${severityClass(
       incident.warning,
     )}" data-incident-id="${escapeHtml(incident.id)}">
       ${renderBadges(incident)}
@@ -1400,8 +1767,9 @@ const renderHeroControls = (model, hero, busy) => {
   const controls = [
     `<a class="button-link ${warning === "emergency_warning" ? "critical" : ""}" href="${escapeHtml(
       model.feed.officialUrl,
-    )}" target="_blank" rel="noopener noreferrer">Open Fires Near Me ${icon("external")}</a>`,
+    )}" target="_blank" rel="noopener noreferrer">Official RFS ${icon("external")}</a>`,
   ];
+  let reminderOptions = "";
 
   if (incident && hero.hasOfficialWarning) {
     controls.push(
@@ -1414,25 +1782,30 @@ const renderHeroControls = (model, hero, busy) => {
         warning === "watch_and_act"
           ? [15, 30]
           : [30, 60, 120];
-      controls.push(`
-        <label>
-          <span class="eyebrow">Snooze reminders</span>
-          <select id="snooze-duration" aria-label="Snooze reminder duration">
-            ${options
-              .map(
-                (minutes) =>
-                  `<option value="${minutes}">${minutes < 60 ? `${minutes} min` : `${minutes / 60} hr`}</option>`,
-              )
-              .join("")}
-          </select>
-        </label>
-        <button class="button" type="button" data-action="snooze" data-incident-id="${escapeHtml(
-          incident.id,
-        )}" ${busy ? "disabled" : ""}>${icon("clock")} Snooze</button>
-      `);
+      reminderOptions = `
+        <details class="brief-alert-options">
+          <summary>Reminder options</summary>
+          <div class="snooze-controls">
+            <label>
+              <span class="eyebrow">Snooze reminders</span>
+              <select id="snooze-duration" aria-label="Snooze reminder duration">
+                ${options
+                  .map(
+                    (minutes) =>
+                      `<option value="${minutes}">${minutes < 60 ? `${minutes} min` : `${minutes / 60} hr`}</option>`,
+                  )
+                  .join("")}
+              </select>
+            </label>
+            <button class="button" type="button" data-action="snooze" data-incident-id="${escapeHtml(
+              incident.id,
+            )}" ${busy ? "disabled" : ""}>${icon("clock")} Snooze</button>
+          </div>
+        </details>
+      `;
     }
   }
-  return `<div class="hero-controls">${controls.join("")}</div>`;
+  return `<div class="hero-controls brief-controls">${controls.join("")}${reminderOptions}</div>`;
 };
 
 const renderHero = (model, busy) => {
@@ -1467,7 +1840,152 @@ const renderHero = (model, busy) => {
   `;
 };
 
-const renderCompact = (model, title) => {
+const renderCommandNav = (model, title) => {
+  const feedLabel = model.feed.stale ? "Delayed" : "Live";
+  return `
+    <nav class="command-nav" aria-label="Command centre navigation">
+      <a class="home-exit" href="/lovelace/default_view" aria-label="Return to Home dashboard">
+        ${icon("home")} <span>Home</span>
+      </a>
+      <div class="command-nav-context">
+        <span>${escapeHtml(title || "NSW Fire Watch")}</span>
+        <strong>${escapeHtml(model.locationName)}</strong>
+      </div>
+      <span class="nav-feed-status ${model.feed.stale ? "delayed" : ""}" title="${escapeHtml(
+        model.feed.lastSuccessfulUpdate
+          ? `Last update ${formatAbsolute(model.feed.lastSuccessfulUpdate)}`
+          : "Last update time unavailable",
+      )}">${feedLabel}</span>
+    </nav>
+  `;
+};
+
+const renderCommandBrief = (model, busy) => {
+  const hero = deriveHero(model);
+  const todayRating = ratingLabel(model.today.rating);
+  const tomorrowRating = ratingLabel(model.tomorrow.rating);
+  const todayFbi =
+    isPresent(model.today.fbi) && !isUnavailable(model.today.fbi)
+      ? `FBI ${model.today.fbi}`
+      : "FBI not supplied";
+  const todayBan =
+    model.today.totalFireBan === true
+      ? '<strong class="ban-declared">Declared</strong>'
+      : model.today.totalFireBan === false
+        ? "Not declared"
+        : "Not supplied";
+  const tomorrowBan =
+    model.tomorrow.totalFireBan === true
+      ? "Total Fire Ban"
+      : model.tomorrow.totalFireBan === false
+        ? "No total fire ban"
+        : "Ban status not supplied";
+  const nearestDistance = model.incidents
+    .filter((incident) => isPresent(incident.distanceKm))
+    .map((incident) => asNumber(incident.distanceKm))
+    .filter((distance) => distance !== null)
+    .reduce((nearest, distance) => Math.min(nearest, distance), Number.POSITIVE_INFINITY);
+  const incidentSubline = Number.isFinite(nearestDistance)
+    ? `Nearest ${formatDistance(nearestDistance)}`
+    : model.feed.stale
+      ? "List may be incomplete"
+      : "None shown in radius";
+  const updateText = model.feed.lastSuccessfulUpdate
+    ? `Updated ${formatRelative(model.feed.lastSuccessfulUpdate)}`
+    : "Update time unavailable";
+  const weatherWarning = model.fireWeatherWarnings[0];
+
+  let priority;
+  if (model.priorityIncident) {
+    const incident = model.priorityIncident;
+    const updated = incident.updatedAt
+      ? `Updated ${formatRelative(incident.updatedAt)}`
+      : "Update time not supplied";
+    priority = `
+      <article class="brief-priority ${severityClass(incident.warning)}" aria-labelledby="brief-priority-heading">
+        <div class="brief-priority-header">
+          <span class="eyebrow">Priority incident</span>
+          <span class="brief-distance">${escapeHtml(formatDistance(incident.distanceKm))}</span>
+        </div>
+        ${renderBadges(incident)}
+        <h3 id="brief-priority-heading">${escapeHtml(incident.title)}</h3>
+        <p>${escapeHtml(incident.type)}</p>
+        <div class="brief-priority-meta">
+          <span>${escapeHtml(updated)}</span>
+        </div>
+      </article>
+    `;
+  } else {
+    priority = `
+      <div class="brief-priority brief-empty" aria-label="Incident summary">
+        <strong>No current incidents are shown in your configured radius.</strong>
+        <p>${
+          model.feed.stale
+            ? "Live data is delayed; check the official source before relying on this list."
+            : "Conditions can change quickly; keep official alerts enabled."
+        }</p>
+      </div>
+    `;
+  }
+
+  return `
+    <section class="command-brief" aria-labelledby="fire-watch-status">
+      <div class="brief-status ${hero.severity}">
+        <div class="brief-heading">
+          <span class="hero-icon">${icon(
+            hero.severity === "severity-emergency" ? "warning" : "fire",
+          )}</span>
+          <div>
+            <span class="eyebrow">What you need to know now</span>
+            <h2 id="fire-watch-status">${escapeHtml(hero.title)}</h2>
+            <p class="brief-action">${escapeHtml(hero.action)}</p>
+          </div>
+        </div>
+        <p class="brief-summary">${escapeHtml(hero.summary)}</p>
+        <span class="brief-freshness" title="${escapeHtml(
+          formatAbsolute(model.feed.lastSuccessfulUpdate),
+        )}">${icon(model.feed.stale ? "warning" : "radio")} ${escapeHtml(updateText)}${
+          model.feed.stale ? " · feed delayed" : " · feed current"
+        }</span>
+      </div>
+
+      <div class="brief-facts" aria-label="Fire conditions at a glance">
+        <div class="brief-fact rating-${ratingKey(model.today.rating)}">
+          <span>Today</span>
+          <strong>${escapeHtml(todayRating)}</strong>
+          <small>${escapeHtml(todayFbi)}</small>
+        </div>
+        <div class="brief-fact">
+          <span>Total Fire Ban today</span>
+          ${todayBan}
+          <small>${model.today.totalFireBan === true ? "Restrictions apply" : "Check for changes"}</small>
+        </div>
+        <div class="brief-fact rating-${ratingKey(model.tomorrow.rating)}">
+          <span>Tomorrow</span>
+          <strong>${escapeHtml(tomorrowRating)}</strong>
+          <small>${escapeHtml(tomorrowBan)}</small>
+        </div>
+        <div class="brief-fact">
+          <span>Incidents in radius</span>
+          <strong>${model.incidentCount}</strong>
+          <small>${escapeHtml(incidentSubline)}</small>
+        </div>
+      </div>
+
+      ${
+        weatherWarning
+          ? `<div class="brief-warning-line">${icon("warning")}<span>${escapeHtml(
+              weatherWarning.title || "BOM fire weather warning issued",
+            )}</span></div>`
+          : ""
+      }
+      ${priority}
+      ${renderHeroControls(model, hero, busy)}
+    </section>
+  `;
+};
+
+const renderCompact = (model, title, showMap = false) => {
   const hero = deriveHero(model);
   const rating = ratingLabel(model.today.rating);
   const fbi =
@@ -1480,6 +1998,19 @@ const renderCompact = (model, title) => {
       : model.today.totalFireBan === false
         ? "Not declared"
         : "Unavailable";
+  const tomorrowRating = ratingLabel(model.tomorrow.rating);
+  const tomorrowBan =
+    model.tomorrow.totalFireBan === true
+      ? "Total Fire Ban"
+      : model.tomorrow.totalFireBan === false
+        ? "No ban declared"
+        : "Ban status unavailable";
+  const nearestIncident = model.incidents[0];
+  const nearestSummary = nearestIncident
+    ? formatDistance(nearestIncident.distanceKm)
+    : model.feed.stale
+      ? "List may be incomplete"
+      : "None shown in radius";
   const updateText = model.feed.lastSuccessfulUpdate
     ? formatRelative(model.feed.lastSuccessfulUpdate)
     : "time unavailable";
@@ -1548,24 +2079,39 @@ const renderCompact = (model, title) => {
           <div class="compact-metric rating-${ratingKey(model.today.rating)}">
             <span>Today</span>
             <strong>${escapeHtml(rating)}</strong>
+            <small>FBI ${escapeHtml(fbi)}</small>
           </div>
           <div class="compact-metric">
-            <span>FBI</span>
-            <strong>${escapeHtml(fbi)}</strong>
-          </div>
-          <div class="compact-metric">
-            <span>Total Fire Ban</span>
+            <span>Total Fire Ban today</span>
             ${fireBan}
+            <small>${model.today.totalFireBan === true ? "Restrictions apply" : "Check for changes"}</small>
+          </div>
+          <div class="compact-metric rating-${ratingKey(model.tomorrow.rating)}">
+            <span>Tomorrow</span>
+            <strong>${escapeHtml(tomorrowRating)}</strong>
+            <small>${escapeHtml(tomorrowBan)}</small>
+          </div>
+          <div class="compact-metric">
+            <span>Incidents in radius</span>
+            <strong>${model.incidentCount}</strong>
+            <small>${escapeHtml(nearestSummary)}</small>
           </div>
         </section>
 
         ${priority}
+        ${showMap ? renderCompactMap() : ""}
         ${
           feedMessage
             ? `<p class="compact-feed-message">${escapeHtml(feedMessage)}</p>`
             : ""
         }
-        ${isPresent(model.today.fbi) ? renderCompactBomAttribution() : ""}
+        ${
+          isPresent(model.today.fbi) ||
+          isPresent(model.tomorrow.fbi) ||
+          model.fireWeatherWarnings.length > 0
+            ? renderCompactBomAttribution()
+            : ""
+        }
         <nav class="compact-actions" aria-label="Fire Watch links">
           <a class="button-link primary" href="/nsw-fire-watch">Open command centre</a>
           <a class="button-link" href="${escapeHtml(
@@ -1605,6 +2151,36 @@ const renderPriority = (model) => {
   `;
 };
 
+const renderDangerDetails = (model) => {
+  const preview = `Today ${ratingLabel(model.today.rating)} · Tomorrow ${ratingLabel(
+    model.tomorrow.rating,
+  )}`;
+  return `
+    <details class="info-drawer">
+      <summary>
+        <span class="drawer-title"><strong>Forecast &amp; fire weather</strong><small>${escapeHtml(
+          preview,
+        )}</small></span>
+        <span class="drawer-chevron">${icon("chevron")}</span>
+      </summary>
+      <div class="drawer-content">
+        <div class="forecast-grid">
+          ${renderForecastDay("Today", model.today)}
+          ${renderForecastDay("Tomorrow", model.tomorrow)}
+        </div>
+        ${renderFireWeatherWarnings(model.fireWeatherWarnings)}
+        ${
+          isPresent(model.today.fbi) ||
+          isPresent(model.tomorrow.fbi) ||
+          model.fireWeatherWarnings.length > 0
+            ? renderBomAttribution()
+            : ""
+        }
+      </div>
+    </details>
+  `;
+};
+
 const fallbackReadiness = () => [
   { id: "plan", label: "Review your household bush fire survival plan", complete: null },
   { id: "alerts", label: "Keep official emergency alerts audible", complete: null },
@@ -1613,6 +2189,7 @@ const fallbackReadiness = () => [
 
 const renderReadiness = (model) => {
   const readiness = model.readiness.length ? model.readiness : fallbackReadiness();
+  const completeCount = readiness.filter((item) => item.complete === true).length;
   const items = readiness
     .map((item) => {
       const stateClass = item.complete === true ? "complete" : "";
@@ -1633,16 +2210,21 @@ const renderReadiness = (model) => {
     })
     .join("");
   return `
-    <section class="surface" aria-labelledby="readiness-heading">
-      <div class="section-heading"><h2 id="readiness-heading">Household readiness</h2>${icon("shield")}</div>
-      <p class="subtle small">Use your own bush fire survival plan. This dashboard does not decide whether it is safe to stay or leave.</p>
-      <ul class="readiness-list">${items}</ul>
-      <div class="incident-actions">
-        <a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">NSW RFS preparation guidance ${icon(
-          "external",
-        )}</a>
+    <details class="info-drawer">
+      <summary>
+        <span class="drawer-title"><strong>Household readiness</strong><small>${completeCount} of ${readiness.length} checked</small></span>
+        <span class="drawer-chevron">${icon("chevron")}</span>
+      </summary>
+      <div class="drawer-content">
+        <p class="subtle small">Use your own bush fire survival plan. This dashboard does not decide whether it is safe to stay or leave.</p>
+        <ul class="readiness-list">${items}</ul>
+        <div class="incident-actions">
+          <a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">NSW RFS preparation guidance ${icon(
+            "external",
+          )}</a>
+        </div>
       </div>
-    </section>
+    </details>
   `;
 };
 
@@ -1670,8 +2252,8 @@ const renderIncidentList = (model, showAll) => {
         <h2 id="incidents-heading">Current incidents</h2>
         <span class="badge meta">${model.incidentCount}</span>
       </div>
-      <p class="subtle small">Ordered by official warning level, control status, then distance. Distance alone does not determine risk.</p>
-      ${publisherHiddenCount ? `<p class="subtle small">Showing the ${model.incidents.length} highest-priority incidents of ${model.incidentCount}; use the map and official source for the complete live set.</p>` : ""}
+      <p class="subtle small">Nearest first. The decision brief above keeps the highest official warning prominent even when it is farther away.</p>
+      ${publisherHiddenCount ? `<p class="subtle small">Showing the ${model.incidents.length} nearest incidents of ${model.incidentCount}; use the official source for the complete live set.</p>` : ""}
       ${body}
       ${showAllButton ? `<div class="incident-actions">${showAllButton}</div>` : ""}
     </section>
@@ -1685,26 +2267,66 @@ const renderPlannedBurns = (model) => {
     model.plannedBurnCount - model.plannedBurns.length,
   );
   return `
-    <section class="surface" aria-labelledby="planned-heading">
-      <details>
-        <summary id="planned-heading">Planned activity &amp; burn-offs <span class="badge meta">${model.plannedBurnCount}</span></summary>
+    <details class="info-drawer">
+      <summary>
+        <span class="drawer-title"><strong>Planned activity &amp; burn-offs</strong><small>${model.plannedBurnCount} reported in range</small></span>
+        <span class="drawer-chevron">${icon("chevron")}</span>
+      </summary>
+      <div class="drawer-content">
         <p class="subtle small">Separated from active incidents so planned activity does not obscure official warnings.</p>
         ${publisherHiddenCount ? `<p class="subtle small">Showing the ${model.plannedBurns.length} nearest planned activities of ${model.plannedBurnCount}.</p>` : ""}
         <ol class="incident-list">
           ${model.plannedBurns.map((item) => `<li>${renderIncident(item)}</li>`).join("")}
         </ol>
-      </details>
-    </section>
+      </div>
+    </details>
   `;
 };
+
+const renderMapCredits = () => `
+  <p class="map-provider-credit">
+    Map: <a href="${OPENFREEMAP_URL}" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>
+    · © <a href="https://openmaptiles.org/" target="_blank" rel="noopener noreferrer">OpenMapTiles</a>
+    · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>
+  </p>
+`;
+
+const renderMapStylesheet = () =>
+  `<link id="maplibre-css" rel="stylesheet" href="${MAPLIBRE_CSS}">`;
+
+const renderMapFallback = (
+  message = "Loading the keyless incident map…",
+  officialUrl = DEFAULT_RFS_URL,
+) => `
+  <div class="map-fallback"><div>
+    <p>${escapeHtml(message)}</p>
+    <a class="button-link" href="${escapeHtml(
+      safeUrl(officialUrl, DEFAULT_RFS_URL),
+    )}" target="_blank" rel="noopener noreferrer">Open official Fires Near Me ${icon("external")}</a>
+  </div></div>
+`;
+
+const renderCompactMap = () => `
+  <section class="compact-map" aria-labelledby="compact-map-heading">
+    <div class="compact-map-heading">
+      <strong id="compact-map-heading">Incidents near home</strong>
+      <span>Local view · zoom ${MAP_DEFAULT_ZOOM}</span>
+    </div>
+    <div id="incident-map" class="map-host compact-map-host" aria-label="NSW RFS incidents near the monitored location">
+      ${renderMapFallback()}
+    </div>
+    ${renderMapCredits()}
+  </section>
+`;
 
 const renderMap = () => `
   <section class="surface" aria-labelledby="map-heading">
     <div class="section-heading"><h2 id="map-heading">Incident map</h2>${icon("map")}</div>
-    <p class="subtle small">Map markers show reported locations, not fire spread, travel safety, or evacuation routes.</p>
-    <div id="native-map" class="map-host" aria-label="NSW RFS incident map">
-      <div class="map-fallback"><div><p>Loading the Home Assistant map…</p><a class="button-link" href="/map">Open Home Assistant map</a></div></div>
+    <p class="subtle small">Centred on your monitored location. Markers show reported locations, not fire spread, travel safety, or evacuation routes.</p>
+    <div id="incident-map" class="map-host" aria-label="NSW RFS incident map">
+      ${renderMapFallback()}
     </div>
+    ${renderMapCredits()}
   </section>
 `;
 
@@ -1727,9 +2349,15 @@ const renderHealth = (model, busy) => {
           ? "Configured"
           : "Status not supplied";
   return `
-    <section class="surface" aria-labelledby="health-heading">
-      <div class="section-heading"><h2 id="health-heading">Sources &amp; data health</h2>${icon("radio")}</div>
-      <div class="health-grid">
+    <details class="info-drawer">
+      <summary>
+        <span class="drawer-title"><strong>Sources, alerts &amp; data health</strong><small>${escapeHtml(
+          status,
+        )} · ${escapeHtml(alertAssignment)}</small></span>
+        <span class="drawer-chevron">${icon("chevron")}</span>
+      </summary>
+      <div class="drawer-content">
+        <div class="health-grid">
         <div class="health-item"><span>Feed status</span><strong class="${statusClass}">${escapeHtml(
           status,
         )}</strong></div>
@@ -1742,36 +2370,37 @@ const renderHealth = (model, busy) => {
         <div class="health-item"><span>Assigned alert delivery</span><strong>${escapeHtml(
           alertAssignment,
         )}</strong></div>
-      </div>
-      ${model.feed.message ? `<p class="notice ${model.feed.stale ? "error" : ""}">${escapeHtml(model.feed.message)}</p>` : ""}
-      <div class="official-links">
-        <a class="button-link" href="${escapeHtml(
-          model.feed.officialUrl,
-        )}" target="_blank" rel="noopener noreferrer">NSW RFS Fires Near Me ${icon("external")}</a>
-        <a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">Fire danger ratings ${icon(
-          "external",
-        )}</a>
-        <a class="button-link" href="${DEFAULT_BOM_URL}" target="_blank" rel="noopener noreferrer">BOM NSW warnings ${icon(
-          "external",
-        )}</a>
-      </div>
-      <p class="source-attribution"><a href="${escapeHtml(
-        model.feed.officialUrl,
-      )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-        RFS_ATTRIBUTION,
-      )}</a></p>
-      <details>
-        <summary>Test assigned alert delivery</summary>
-        <p class="subtle small">Tests are clearly labelled and use your configured alert automation. They do not create an official warning.</p>
-        <div class="test-controls">
-          <a class="button-link" href="/config/integrations/integration/nsw_fire_watch">Manage alert assignment</a>
-          <button class="button" type="button" data-action="test-alert" data-level="advice" ${busy ? "disabled" : ""}>Test Advice</button>
-          <button class="button" type="button" data-action="test-alert" data-level="watch_and_act" ${busy ? "disabled" : ""}>Test Watch and Act</button>
-          <button class="button" type="button" data-action="test-alert" data-level="emergency_warning" ${busy ? "disabled" : ""}>Test Emergency Warning</button>
         </div>
-      </details>
-      <p class="disclaimer"><strong>Supplementary information only.</strong> Do not rely on Home Assistant as your only warning channel. Follow NSW RFS, BOM, emergency services, local radio, and the Fires Near Me NSW app. Warnings may not precede a fast-moving fire. In an emergency, call Triple Zero (000).</p>
-    </section>
+        ${model.feed.message ? `<p class="notice ${model.feed.stale ? "error" : ""}">${escapeHtml(model.feed.message)}</p>` : ""}
+        <div class="official-links">
+          <a class="button-link" href="${escapeHtml(
+            model.feed.officialUrl,
+          )}" target="_blank" rel="noopener noreferrer">NSW RFS Fires Near Me ${icon("external")}</a>
+          <a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">Fire danger ratings ${icon(
+            "external",
+          )}</a>
+          <a class="button-link" href="${DEFAULT_BOM_URL}" target="_blank" rel="noopener noreferrer">BOM NSW warnings ${icon(
+            "external",
+          )}</a>
+        </div>
+        <p class="source-attribution"><a href="${escapeHtml(
+          model.feed.officialUrl,
+        )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+          RFS_ATTRIBUTION,
+        )}</a></p>
+        <details>
+          <summary>Test assigned alert delivery</summary>
+          <p class="subtle small">Tests are clearly labelled and use your configured alert automation. They do not create an official warning.</p>
+          <div class="test-controls">
+            <a class="button-link" href="/config/integrations/integration/nsw_fire_watch">Manage alert assignment</a>
+            <button class="button" type="button" data-action="test-alert" data-level="advice" ${busy ? "disabled" : ""}>Test Advice</button>
+            <button class="button" type="button" data-action="test-alert" data-level="watch_and_act" ${busy ? "disabled" : ""}>Test Watch and Act</button>
+            <button class="button" type="button" data-action="test-alert" data-level="emergency_warning" ${busy ? "disabled" : ""}>Test Emergency Warning</button>
+          </div>
+        </details>
+        <p class="disclaimer"><strong>Supplementary information only.</strong> Do not rely on Home Assistant as your only warning channel. Follow NSW RFS, BOM, emergency services, local radio, and the Fires Near Me NSW app. Warnings may not precede a fast-moving fire. In an emergency, call Triple Zero (000).</p>
+      </div>
+    </details>
   `;
 };
 
@@ -1783,7 +2412,9 @@ class NSWFireWatchBase extends HTMLElement {
     this._config = {};
     this._panel = null;
     this._signature = null;
-    this._mapCard = null;
+    this._incidentMap = null;
+    this._mapMarkers = [];
+    this._mapLoadCancel = null;
     this._renderToken = 0;
     this._showAllIncidents = false;
     this._busy = false;
@@ -1794,7 +2425,7 @@ class NSWFireWatchBase extends HTMLElement {
 
   connectedCallback() {
     if (!this._minuteTimer) {
-      this._minuteTimer = window.setInterval(() => this._render(true), 60_000);
+      this._minuteTimer = window.setInterval(() => this._render(true), 300_000);
     }
     this._render(true);
   }
@@ -1802,6 +2433,7 @@ class NSWFireWatchBase extends HTMLElement {
   disconnectedCallback() {
     if (this._minuteTimer) window.clearInterval(this._minuteTimer);
     this._minuteTimer = null;
+    this._destroyIncidentMap();
   }
 
   set hass(value) {
@@ -1820,13 +2452,12 @@ class NSWFireWatchBase extends HTMLElement {
         notice: this._notice,
         busy: this._busy,
         showAll: this._showAllIncidents,
-        minute: Math.floor(Date.now() / 60_000),
+        refreshBucket: Math.floor(Date.now() / 300_000),
       });
     } catch (_error) {
       signature = `${Date.now()}`;
     }
     if (signature === this._signature) {
-      if (this._mapCard) this._mapCard.hass = value;
       return;
     }
     this._signature = signature;
@@ -1866,7 +2497,10 @@ class NSWFireWatchBase extends HTMLElement {
   }
 
   getCardSize() {
-    return asBoolean(this._config.compact) === true ? 4 : 12;
+    if (asBoolean(this._config.compact) === true) {
+      return this._config.show_map === true ? 8 : 4;
+    }
+    return 12;
   }
 
   _render(force = false, suppliedModel = null) {
@@ -1874,7 +2508,7 @@ class NSWFireWatchBase extends HTMLElement {
     const model = suppliedModel || normalizeModel(this._hass, this._config);
     const compact = asBoolean(this._config.compact) === true;
     const token = ++this._renderToken;
-    this._mapCard = null;
+    this._destroyIncidentMap();
 
     if (!model.configured) {
       if (compact) {
@@ -1919,10 +2553,13 @@ class NSWFireWatchBase extends HTMLElement {
     }
 
     if (compact) {
+      const showMap = this._config.show_map === true;
       this.shadowRoot.innerHTML = `
+        ${showMap ? renderMapStylesheet() : ""}
         <style>${STYLES}</style>
-        ${renderCompact(model, this._config.title)}
+        ${renderCompact(model, this._config.title, showMap)}
       `;
+      if (showMap) this._mountIncidentMap(model, token);
       return;
     }
 
@@ -1935,90 +2572,244 @@ class NSWFireWatchBase extends HTMLElement {
       : `<div class="visually-hidden" aria-live="polite"></div>`;
 
     this.shadowRoot.innerHTML = `
+      ${showMap ? renderMapStylesheet() : ""}
       <style>${STYLES}</style>
       <main class="app-shell">
-        <header class="app-header">
-          <div>
-            <span class="eyebrow">Fire season command centre</span>
-            <h1>${escapeHtml(this._config.title || "NSW Fire Watch")}</h1>
-          </div>
-          <span class="supplementary-chip">Supplementary</span>
-        </header>
+        <h1 class="visually-hidden">${escapeHtml(
+          this._config.title || "NSW Fire Watch command centre",
+        )}</h1>
+        ${renderCommandNav(model, this._config.title)}
         ${notice}
-        ${renderHero(model, this._busy)}
-        <section class="surface" aria-labelledby="danger-heading">
-          <div class="section-heading"><h2 id="danger-heading">Fire danger outlook</h2>${icon(
-            "warning",
-          )}</div>
-          <div class="forecast-grid">
-            ${renderForecastDay("Today", model.today)}
-            ${renderForecastDay("Tomorrow", model.tomorrow)}
-          </div>
-          ${renderFireWeatherWarnings(model.fireWeatherWarnings)}
-          ${
-            isPresent(model.today.fbi) ||
-            isPresent(model.tomorrow.fbi) ||
-            model.fireWeatherWarnings.length > 0
-              ? renderBomAttribution()
-              : ""
-          }
+        ${renderCommandBrief(model, this._busy)}
+        <div class="operations-grid">
+          ${showMap ? renderMap() : ""}
+          ${renderIncidentList(model, this._showAllIncidents)}
+        </div>
+        <section class="surface detail-hub" aria-label="More fire information and settings">
+          ${renderDangerDetails(model)}
+          ${showReadiness ? renderReadiness(model) : ""}
+          ${renderPlannedBurns(model)}
+          ${renderHealth(model, this._busy)}
         </section>
-        ${renderPriority(model)}
-        ${showReadiness ? renderReadiness(model) : ""}
-        ${renderIncidentList(model, this._showAllIncidents)}
-        ${renderPlannedBurns(model)}
-        ${showMap ? renderMap() : ""}
-        ${renderHealth(model, this._busy)}
       </main>
     `;
 
-    if (showMap) this._mountNativeMap(model, token);
+    if (showMap) this._mountIncidentMap(model, token);
   }
 
-  async _mountNativeMap(model, token) {
-    const host = this.shadowRoot.getElementById("native-map");
+  _destroyIncidentMap() {
+    if (this._mapLoadCancel) {
+      this._mapLoadCancel();
+      this._mapLoadCancel = null;
+    }
+    for (const marker of this._mapMarkers || []) {
+      try {
+        marker.remove();
+      } catch (_error) {
+        // A map teardown can already have detached its markers.
+      }
+    }
+    this._mapMarkers = [];
+    if (this._incidentMap) {
+      try {
+        this._incidentMap.remove();
+      } catch (_error) {
+        // WebGL loss during Companion shutdown must not break the dashboard.
+      }
+    }
+    this._incidentMap = null;
+  }
+
+  async _waitForMapStylesheet(token) {
+    const stylesheet = this.shadowRoot.getElementById("maplibre-css");
+    if (!stylesheet) throw new Error("MapLibre styles are unavailable");
+    if (stylesheet.sheet) return;
+    await new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(
+        () => reject(new Error("MapLibre styles timed out")),
+        8_000,
+      );
+      stylesheet.addEventListener(
+        "load",
+        () => {
+          window.clearTimeout(timeout);
+          resolve();
+        },
+        { once: true },
+      );
+      stylesheet.addEventListener(
+        "error",
+        () => {
+          window.clearTimeout(timeout);
+          reject(new Error("MapLibre styles could not be loaded"));
+        },
+        { once: true },
+      );
+    });
+    if (token !== this._renderToken) throw new Error("Map render superseded");
+  }
+
+  _mapCentre(model) {
+    if (validCoordinates(model.monitoredLatitude, model.monitoredLongitude)) {
+      return [model.monitoredLongitude, model.monitoredLatitude];
+    }
+    const zone = this._hass?.states?.[model.zoneEntityId];
+    const latitude = asNumber(zone?.attributes?.latitude ?? this._hass?.config?.latitude);
+    const longitude = asNumber(
+      zone?.attributes?.longitude ?? this._hass?.config?.longitude,
+    );
+    return validCoordinates(latitude, longitude) ? [longitude, latitude] : null;
+  }
+
+  _incidentPopup(maplibregl, incident) {
+    const content = document.createElement("div");
+    const heading = document.createElement("h3");
+    heading.className = "map-popup-title";
+    heading.textContent = incident.title;
+    content.append(heading);
+
+    for (const value of [
+      warningLabel(incident.warning),
+      controlLabel(incident.control),
+      `${incident.type} · ${formatDistance(incident.distanceKm)}`,
+    ]) {
+      const line = document.createElement("p");
+      line.className = "map-popup-meta";
+      line.textContent = value;
+      content.append(line);
+    }
+
+    const officialUrl = safeUrl(incident.officialUrl, DEFAULT_RFS_URL);
+    const link = document.createElement("a");
+    link.className = "map-popup-link";
+    link.href = officialUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Open official incident information";
+    content.append(link);
+    return new maplibregl.Popup({ closeButton: true, offset: 18 }).setDOMContent(content);
+  }
+
+  _showMapFailure(host, model) {
+    this._destroyIncidentMap();
+    if (!host?.isConnected) return;
+    host.innerHTML = renderMapFallback(
+      "The keyless map is unavailable on this device. Incident status and distance remain available above.",
+      model.feed.officialUrl,
+    );
+  }
+
+  async _mountIncidentMap(model, token) {
+    const host = this.shadowRoot.getElementById("incident-map");
     if (!host) return;
     try {
-      if (typeof window.loadCardHelpers !== "function") {
-        throw new Error("Home Assistant card helpers are unavailable");
+      const [maplibregl] = await Promise.all([
+        loadMapLibre(),
+        this._waitForMapStylesheet(token),
+      ]);
+      if (token !== this._renderToken || !host.isConnected) return;
+      if (
+        typeof maplibregl.supported === "function" &&
+        !maplibregl.supported({ failIfMajorPerformanceCaveat: false })
+      ) {
+        throw new Error("WebGL mapping is unsupported");
       }
-      const helpers = await window.loadCardHelpers();
-      if (token !== this._renderToken || !this.shadowRoot.getElementById("native-map")) return;
+      const centre = this._mapCentre(model);
+      if (!centre) throw new Error("The monitored location has no coordinates");
 
-      const incidentEntities = [...model.incidents, ...model.plannedBurns]
-        .map((incident) => incident.entityId)
-        .filter((entityId) => entityId && this._hass?.states?.[entityId]);
-      const entityIds = [...new Set([model.zoneEntityId, ...incidentEntities].filter(Boolean))];
-      const mapConfig = {
-        type: "map",
-        title: "",
-        entities: entityIds,
-        auto_fit: true,
-        cluster: true,
-        hours_to_show: 0,
-      };
-      if (!incidentEntities.length && model.feed.geoLocationSource) {
-        mapConfig.geo_location_sources = [model.feed.geoLocationSource];
-      }
-      if (!mapConfig.entities.length && !mapConfig.geo_location_sources) {
-        mapConfig.show_all = true;
-      }
+      host.replaceChildren();
+      const map = new maplibregl.Map({
+        container: host,
+        style: OPENFREEMAP_STYLE,
+        center: centre,
+        zoom: MAP_DEFAULT_ZOOM,
+        minZoom: MAP_MIN_ZOOM,
+        maxZoom: 18,
+        attributionControl: false,
+        cooperativeGestures: true,
+      });
+      this._incidentMap = map;
+      map.addControl(
+        new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }),
+        "top-left",
+      );
 
-      const card = helpers.createCardElement(mapConfig);
-      card.hass = this._hass;
-      host.replaceChildren(card);
-      this._mapCard = card;
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        let timer = null;
+        const settle = (callback, value) => {
+          if (settled) return;
+          settled = true;
+          if (timer) window.clearTimeout(timer);
+          timer = null;
+          if (this._mapLoadCancel === cancel) this._mapLoadCancel = null;
+          callback(value);
+        };
+        const cancel = () => {
+          const error = new Error("Map render cancelled");
+          error.name = "AbortError";
+          settle(reject, error);
+        };
+        this._mapLoadCancel = cancel;
+        timer = window.setTimeout(
+          () => settle(reject, new Error("The map style timed out")),
+          15_000,
+        );
+        map.once("load", () => settle(resolve));
+        map.once("error", (event) => {
+          if (map.loaded()) return;
+          settle(
+            reject,
+            event?.error || new Error("The map style could not be loaded"),
+          );
+        });
+      });
+      if (token !== this._renderToken || !host.isConnected) return;
+
+      const homeMarker = document.createElement("span");
+      homeMarker.className = "map-marker home";
+      homeMarker.setAttribute("aria-label", `${model.locationName} monitored location`);
+      homeMarker.title = `${model.locationName} monitored location`;
+      this._mapMarkers.push(
+        new maplibregl.Marker({ element: homeMarker, anchor: "center" })
+          .setLngLat(centre)
+          .addTo(map),
+      );
+
+      const markerIncidents = [];
+      const seenIncidentIds = new Set();
+      for (const incident of [
+        model.priorityIncident,
+        ...model.incidents,
+        ...model.plannedBurns,
+      ]) {
+        if (!incident || seenIncidentIds.has(incident.id)) continue;
+        seenIncidentIds.add(incident.id);
+        markerIncidents.push(incident);
+      }
+      for (const incident of markerIncidents) {
+        if (!validCoordinates(incident.latitude, incident.longitude)) continue;
+        const markerElement = document.createElement("button");
+        markerElement.type = "button";
+        markerElement.className = `map-marker ${
+          incident.isPlanned ? "planned" : `warning-${warningKey(incident.warning)}`
+        }`;
+        markerElement.setAttribute(
+          "aria-label",
+          `${incident.title}, ${formatDistance(incident.distanceKm)}`,
+        );
+        markerElement.title = incident.title;
+        const marker = new maplibregl.Marker({ element: markerElement, anchor: "center" })
+          .setLngLat([incident.longitude, incident.latitude])
+          .setPopup(this._incidentPopup(maplibregl, incident))
+          .addTo(map);
+        this._mapMarkers.push(marker);
+      }
+      map.resize();
     } catch (_error) {
-      if (token !== this._renderToken) return;
-      host.innerHTML = `
-        <div class="map-fallback"><div>
-          <p>The native map could not be loaded here.</p>
-          <a class="button-link" href="/map">Open Home Assistant map</a>
-          <a class="button-link" href="${escapeHtml(
-            model.feed.officialUrl,
-          )}" target="_blank" rel="noopener noreferrer">Open Fires Near Me ${icon("external")}</a>
-        </div></div>
-      `;
+      if (_error?.name === "AbortError" || token !== this._renderToken) return;
+      console.warn("NSW Fire Watch keyless map unavailable", _error);
+      this._showMapFailure(host, model);
     }
   }
 
@@ -2271,24 +3062,6 @@ class NSWFireWatchDashboardStrategy extends HTMLElement {
           icon: "mdi:fire-alert",
           type: "panel",
           cards: [cardConfig],
-        },
-        {
-          title: "Full incident map",
-          path: "incident-map",
-          icon: "mdi:map-marker-alert",
-          type: "panel",
-          cards: [
-            {
-              type: "map",
-              entities: [firstPresent(config.zone_entity, "zone.home")],
-              geo_location_sources: [
-                firstPresent(config.geo_location_source, DEFAULT_GEO_SOURCE),
-              ],
-              auto_fit: true,
-              cluster: true,
-              hours_to_show: 0,
-            },
-          ],
         },
       ],
     };

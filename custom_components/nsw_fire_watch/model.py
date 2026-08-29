@@ -311,7 +311,33 @@ def priority_key(incident: Incident) -> tuple[Any, ...]:
 
 
 def sort_incidents(incidents: Iterable[Incident]) -> list[Incident]:
+    """Return incidents in alert/hero priority order."""
     return sorted(incidents, key=priority_key)
+
+
+def distance_key(incident: Incident) -> tuple[Any, ...]:
+    """Rank a display list by proximity, with unknown distances last.
+
+    Warning priority is only a deterministic tie-breaker here. Alerting and the
+    highest-priority incident continue to use :func:`priority_key`.
+    """
+    distance = (
+        incident.distance_km if incident.distance_km is not None else float("inf")
+    )
+    updated = incident.updated_at.timestamp() if incident.updated_at else 0.0
+    return (
+        distance,
+        -incident.warning_rank,
+        -(1 if incident.is_fire else 0),
+        -incident.control_rank,
+        -updated,
+        incident.title.casefold(),
+    )
+
+
+def sort_incidents_by_distance(incidents: Iterable[Incident]) -> list[Incident]:
+    """Return incidents nearest first for maps and human-scannable lists."""
+    return sorted(incidents, key=distance_key)
 
 
 def radius_band(distance_km: float | None) -> int:

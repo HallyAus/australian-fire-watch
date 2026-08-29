@@ -46,11 +46,14 @@
         letter-spacing: .08em;
         text-transform: uppercase;
       }
+      .phone-preview { width: min(100%, 390px); }
+      .desktop-preview { grid-column: 1 / -1; }
       @media (max-width: 760px) {
         .fixtures { grid-template-columns: 1fr; padding: 10px; }
+        .desktop-preview { grid-column: auto; }
       }
     </style>
-    <script defer src="../custom_components/nsw_fire_watch/frontend/nsw-fire-watch-panel.js"></script>
+    <script defer src="../custom_components/nsw_fire_watch/frontend/nsw-fire-watch-panel.js?fixture=mobile-redesign"></script>
     <script defer>
       window.addEventListener("DOMContentLoaded", () => {
         const minutesAgo = (minutes) =>
@@ -121,6 +124,8 @@
                 direction: "west",
                 council: "Fixture Council",
                 size_ha: 42,
+                latitude: -33.36,
+                longitude: 151.28,
                 updated_at: minutesAgo(4),
                 official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me"
               },
@@ -132,6 +137,8 @@
                 warning_level: "Not Applicable",
                 control_status: "Not yet controlled",
                 distance_km: 14.7,
+                latitude: -33.27,
+                longitude: 151.34,
                 updated_at: minutesAgo(8),
                 official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me"
               }
@@ -144,6 +151,8 @@
                 warning_level: "Not Applicable",
                 control_status: "Under control",
                 distance_km: 21,
+                latitude: -33.45,
+                longitude: 151.18,
                 updated_at: minutesAgo(25),
                 official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me"
               }
@@ -183,6 +192,7 @@
         };
 
         const hass = {
+          config: { latitude: -33.30, longitude: 151.32 },
           states: {
             "sensor.fixture_nsw_fire_watch": summary,
             "input_boolean.fixture_fire_plan": {
@@ -226,9 +236,18 @@
         mount("compact-fixture", {
           entity: "sensor.fixture_nsw_fire_watch",
           title: "NSW Fire Watch",
-          compact: true
+          compact: true,
+          show_map: true
         });
-        mount("full-fixture", {
+        mount("mobile-command-fixture", {
+          entity: "sensor.fixture_nsw_fire_watch",
+          title: "NSW Fire Watch",
+          compact: false,
+          show_map: true,
+          show_readiness: true,
+          max_incidents: 10
+        });
+        mount("desktop-command-fixture", {
           entity: "sensor.fixture_nsw_fire_watch",
           title: "NSW Fire Watch",
           compact: false,
@@ -242,16 +261,20 @@
   <body>
     <header class="fixture-header">
       <h1>NSW Fire Watch visual fixture</h1>
-      <p>Fake data only. Compact Home card and full command-centre card render from the same state.</p>
+      <p>Fake data only. Compact Home, phone command-centre, and desktop views render from the same state.</p>
     </header>
     <main class="fixtures">
       <section class="fixture-case">
         <h2>Compact Home card</h2>
         <div id="compact-fixture"></div>
       </section>
-      <section class="fixture-case">
-        <h2>Full command centre</h2>
-        <div id="full-fixture"></div>
+      <section class="fixture-case phone-preview">
+        <h2>Command centre · 390px phone</h2>
+        <div id="mobile-command-fixture"></div>
+      </section>
+      <section class="fixture-case desktop-preview">
+        <h2>Command centre · responsive desktop</h2>
+        <div id="desktop-command-fixture"></div>
       </section>
     </main>
   </body>

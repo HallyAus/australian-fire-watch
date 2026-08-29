@@ -119,9 +119,10 @@ class ParserTests(unittest.TestCase):
                         "guid": "https://example.invalid/incidents/time-test",
                         "title": "Fixture incident",
                         "category": "Advice",
-                        "description": (
-                            "UPDATED: 29/08/2026 18:30:00\nTYPE: Bush Fire"
-                        ),
+                        # This is the live RFS description format. Python's
+                        # email-date parser accepts it as a naive datetime, so
+                        # it must retain the explicit NSW-local assumption.
+                        "description": "UPDATED: 29 Aug 2026 18:30\nTYPE: Bush Fire",
                     },
                     "geometry": {
                         "type": "Point",
