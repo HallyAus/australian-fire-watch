@@ -26,6 +26,49 @@ jobs:
           assert hashlib.sha256(patch).hexdigest() == '26595ccda9a0c92097d4a5d51609d46df6f8398c0c94401ceea9d4c5c2e9f243'
           subprocess.run(['git', 'apply', '--check'], input=patch, check=True)
           subprocess.run(['git', 'apply'], input=patch, check=True)
+          path = Path('custom_components/australian_fire_watch/coordinator.py')
+          text = path.read_text()
+          old = 'self.async_set_updated_data(self._compose_data())'
+          assert text.count(old) == 4, text.count(old)
+          text = text.replace(old, 'self._publish_local_data()')
+          marker = '    async def async_retry_notifications('
+          helper = '''    def _publish_local_data(self) -> None:
+                  """Publish local changes without resetting feed polling or feed health."""
+                  self.data = self._compose_data()
+                  self.async_update_listeners()
+
+          '''
+          import textwrap
+          helper = textwrap.dedent(helper)
+          helper = '    ' + helper.replace('\n', '\n    ').rstrip() + '\n\n'
+          helper = ('    def _publish_local_data(self) -> None:\n'
+                    '        """Publish local changes without resetting feed polling or feed health."""\n'
+                    '        self.data = self._compose_data()\n'
+                    '        self.async_update_listeners()\n\n')
+          assert marker in text
+          path.write_text(text.replace(marker, helper + marker, 1))
+          test = Path('tests_ha/test_reliability.py')
+          test.write_text(test.read_text() + '''
+
+          async def test_local_notification_publication_preserves_feed_poll_and_health():
+              """An outbox refresh must not postpone the next poll or mask its failure."""
+              from unittest.mock import patch
+              from custom_components.australian_fire_watch.coordinator import FireWatchCoordinator
+
+              coordinator = object.__new__(FireWatchCoordinator)
+              coordinator.last_update_success = False
+              coordinator.data = {}
+              with (
+                  patch.object(coordinator, "_compose_data", return_value={"local": True}),
+                  patch.object(coordinator, "async_update_listeners") as listeners,
+                  patch.object(coordinator, "async_set_updated_data") as reset_poll,
+              ):
+                  coordinator._publish_local_data()
+              reset_poll.assert_not_called()
+              listeners.assert_called_once()
+              assert coordinator.last_update_success is False
+              assert coordinator.data == {"local": True}
+          ''')
           for p in Path('.review').glob('*'):
               p.unlink()
           Path('.review').rmdir()
@@ -33,7 +76,16 @@ jobs:
           Path('.github/workflows/apply-reliability.yml').unlink()
           PY
       - name: Install validation environment
-        run: python -m pip install ruff pyyaml aiohttp -r requirements-test-ha.txt
+        run: |
+          python -m pip install ruff pyyaml aiohttp -r requirements-test-ha.txt
+          python - <<'PY'
+          from importlib.metadata import version
+          from pathlib import Path
+          packages = ['pytest-homeassistant-custom-component', 'homeassistant']
+          content = '# Runtime dependency versions validated for this release.\n' + ''.join(f'{name}=={version(name)}\n' for name in packages)
+          Path('requirements-test-ha.txt').write_text(content)
+          print(content)
+          PY
       - name: Format changed Python files
         run: |
           ruff format custom_components/australian_fire_watch tests/test_reliability.py tests_ha
@@ -51,13 +103,13 @@ jobs:
           category: integration
       - name: Validate Home Assistant metadata
         uses: home-assistant/actions/hassfest@master
-      - name: Store tested Git tree without updating main
+      - name: Store tested source blobs without changing any branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           git add -A
           python - <<'PY'
-          import json, os, subprocess, urllib.request
+          import json, os, subprocess, urllib.request, urllib.error
           from pathlib import Path
           original = 'acfc5c093b78bca3b1c0bdb1d2c743b83b18470f'
           paths = subprocess.check_output(['git', 'diff', '--cached', '--name-only', original], text=True).splitlines()
@@ -66,20 +118,26 @@ jobs:
               path = Path(name)
               item = {'path': name, 'mode': '100644', 'type': 'blob'}
               if path.exists():
-                  item['content'] = path.read_text(encoding='utf-8')
+                  request = urllib.request.Request(
+                      'https://api.github.com/repos/HallyAus/australian-fire-watch/git/blobs',
+                      data=json.dumps({'content': path.read_text(encoding='utf-8'), 'encoding': 'utf-8'}).encode(),
+                      headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json'},
+                      method='POST')
+                  try:
+                      with urllib.request.urlopen(request) as response:
+                          result = json.load(response)
+                  except urllib.error.HTTPError as err:
+                      print(err.read().decode())
+                      raise
+                  item['sha'] = result['sha']
               else:
                   item['sha'] = None
               elements.append(item)
-          request = urllib.request.Request(
-              'https://api.github.com/repos/HallyAus/australian-fire-watch/git/trees',
-              data=json.dumps({'base_tree': '263a443db041a4c780ca309acdd634fbbe8d6779', 'tree': elements}).encode(),
-              headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json'},
-              method='POST')
-          with urllib.request.urlopen(request) as response:
-              result = json.load(response)
-          report = {'tree_sha': result['sha'], 'parent_sha': original, 'changed_files': paths, 'validated': True}
-          Path(os.environ['RUNNER_TEMP'], 'tested-tree.json').write_text(json.dumps(report, indent=2))
+          report = {'parent_sha': original, 'base_tree_sha': '263a443db041a4c780ca309acdd634fbbe8d6779', 'tree_elements': elements, 'validated': True}
+          Path(os.environ['RUNNER_TEMP'], 'tested-blobs.json').write_text(json.dumps(report, indent=2))
+          print('TESTED_BLOBS_BEGIN')
           print(json.dumps(report, indent=2))
+          print('TESTED_BLOBS_END')
           PY
       - name: Archive source and results
         if: always()
@@ -96,5 +154,5 @@ jobs:
             ${{ runner.temp }}/unit-tests.log
             ${{ runner.temp }}/ha-tests.log
             ${{ runner.temp }}/ha-results.xml
-            ${{ runner.temp }}/tested-tree.json
+            ${{ runner.temp }}/tested-blobs.json
           retention-days: 3
