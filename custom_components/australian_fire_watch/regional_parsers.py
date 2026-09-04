@@ -13,6 +13,10 @@ from .parsers import (
     _description_fields,
     _descendants,
     _float,
+    _feature_collection,
+    _geojson_warning_areas,
+    _rss_channel,
+    _require_properties,
     _geojson_point,
     _geojson_polygons,
     _local,
@@ -44,6 +48,9 @@ _NON_BUSH_FIRE_MARKERS = (
     "vehicle fire",
     "car fire",
     "alarm activation",
+    "fire structure",
+    "fire building",
+    "fire vehicle",
 )
 
 
@@ -103,8 +110,7 @@ def parse_vic_geojson(
 ) -> ParsedFeed:
     """Parse Emergency Victoria's public combined event GeoJSON."""
     data = _json(payload)
-    if not isinstance(data, dict) or data.get("type") != "FeatureCollection":
-        raise FeedParseError("Victorian feed root is not a FeatureCollection")
+    _feature_collection(data, "Victorian feed")
     incidents: list[Incident] = []
     generated: list[datetime] = []
     for index, feature in enumerate(data.get("features", [])):
@@ -113,6 +119,7 @@ def parse_vic_geojson(
         props = feature.get("properties") or {}
         if not isinstance(props, dict):
             continue
+        _require_properties(props, ("category1", "category2"), "Victorian event")
         category_1 = str(props.get("category1") or "")
         category_2 = str(props.get("category2") or "")
         feed_type = str(props.get("feedType") or "").casefold()
@@ -155,6 +162,7 @@ def parse_vic_geojson(
                     props.get("webUrl") or props.get("link") or official_url
                 ),
                 polygons=polygons,
+                warning_areas=_geojson_warning_areas(feature.get("geometry")),
                 responsible_agency=source,
                 sources=(source,),
             )
@@ -174,14 +182,14 @@ def parse_qld_geojson(
 ) -> ParsedFeed:
     """Parse Queensland's public ESCAD current-incidents GeoJSON."""
     data = _json(payload)
-    if not isinstance(data, dict) or data.get("type") != "FeatureCollection":
-        raise FeedParseError("Queensland feed root is not a FeatureCollection")
+    _feature_collection(data, "Queensland feed")
     incidents: list[Incident] = []
     generated: list[datetime] = []
     for index, feature in enumerate(data.get("features", [])):
         if not isinstance(feature, dict):
             continue
         props = feature.get("properties") or {}
+        _require_properties(props, ("GroupedType", "Type"), "Queensland incident")
         incident_type = str(props.get("GroupedType") or props.get("Type") or "")
         lowered = incident_type.casefold()
         if "fire vegetation" not in lowered and "fire permitted burn" not in lowered:
@@ -230,14 +238,14 @@ def parse_qld_warning_geojson(
 ) -> ParsedFeed:
     """Parse the official Queensland public warning-point layer."""
     data = _json(payload)
-    if not isinstance(data, dict) or data.get("type") != "FeatureCollection":
-        raise FeedParseError("Queensland warning root is not a FeatureCollection")
+    _feature_collection(data, "Queensland warning")
     incidents: list[Incident] = []
     generated: list[datetime] = []
     for index, feature in enumerate(data.get("features", [])):
         if not isinstance(feature, dict):
             continue
         props = feature.get("properties") or {}
+        _require_properties(props, ("EventType",), "Queensland warning")
         if str(props.get("EventType") or "").casefold() != "fire":
             continue
         latitude, longitude = _geojson_point(feature.get("geometry"))
@@ -286,11 +294,15 @@ def parse_nt_json(
         or collection.get("type") != "FeatureCollection"
     ):
         raise FeedParseError("NT incidents root is not a FeatureCollection")
+    _feature_collection(collection, "NT incidents")
     incidents: list[Incident] = []
     for index, feature in enumerate(collection.get("features", [])):
         if not isinstance(feature, dict):
             continue
         props = feature.get("properties") or {}
+        _require_properties(
+            props, ("_category", "Category", "_eventtype", "Fire Type"), "NT incident"
+        )
         category = str(props.get("_category") or props.get("Category") or "")
         incident_type = str(props.get("_eventtype") or props.get("Fire Type") or "")
         status = str(props.get("_status") or props.get("Status") or "Unknown")
@@ -336,6 +348,10 @@ def parse_tas_kml(
 ) -> ParsedFeed:
     """Parse Tasmania Fire Service bushfire or alert KML."""
     root = _safe_xml(payload)
+    if _local(root).casefold() != "kml" or not (
+        _descendants(root, "Document") or _descendants(root, "Folder")
+    ):
+        raise FeedParseError("Expected KML Document or Folder")
     incidents: list[Incident] = []
     for index, placemark in enumerate(_descendants(root, "Placemark")):
         title = _text(placemark, "name") or "Fire incident"
@@ -344,7 +360,10 @@ def parse_tas_kml(
         coordinates = ""
         for node in placemark.iter():
             if _local(node) == "coordinates":
-                coordinates = "".join(node.itertext()).strip().split()[0]
+                tokens = "".join(node.itertext()).strip().split()
+                if not tokens:
+                    raise FeedParseError("Empty KML coordinates")
+                coordinates = tokens[0]
                 break
         latitude = longitude = None
         try:
@@ -394,10 +413,11 @@ def parse_georss(
 ) -> ParsedFeed:
     """Parse a publisher-designated GeoRSS/RSS incident feed."""
     root = _safe_xml(payload)
+    channel = _rss_channel(root)
     incidents: list[Incident] = []
     generated: list[datetime] = []
     records = [
-        node for node in root.iter() if _local(node).casefold() in {"item", "entry"}
+        node for node in channel.iter() if _local(node).casefold() in {"item", "entry"}
     ]
     for index, item in enumerate(records):
         title = _text(item, "title") or "Fire incident"

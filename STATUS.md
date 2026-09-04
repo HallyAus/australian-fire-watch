@@ -1,5 +1,19 @@
 # Australian Fire Watch status
 
+## 1.0.1 reliability fixes
+
+- Warning entity availability is separate from a valid no-warning assessment.
+- Valid current feeds can add/escalate independently; missing/de-escalating
+  records require complete source coverage.
+- HTTP response bodies and validators are cached only after product validation.
+- Notifications use an atomic lifecycle/outbox transaction, per-recipient retries,
+  stable tags, bounded backoff, expiry and delivery-health diagnostics.
+- NSW declarations retain their source calendar dates across midnight and outages.
+- Published warning polygons (including holes) determine spatial alert relevance.
+- NSW uses the common bushfire-only filtering policy after raw feed validation.
+- Regression coverage includes actual Home Assistant setup, reload, unload,
+  entity availability, failover and persistence failure paths.
+
 ## 1.0.0 national launch
 
 - The public repository is `HallyAus/australian-fire-watch` and the Home

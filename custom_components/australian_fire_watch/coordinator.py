@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from functools import partial
 import logging
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -15,9 +17,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util import dt as dt_util
 
 from .api import FeedSnapshot, OfficialFeedClient
+from .notifications import NotificationOutbox
 from .const import (
     BOM_FIRE_DANGER_URL,
     BOM_WARNINGS_URL,
@@ -60,11 +62,11 @@ from .const import (
     SUMMARY_PLANNED_LIMIT,
 )
 from .model import (
-    authoritative_incident_snapshot_valid,
     DangerLifecycleEvent,
     Incident,
     LifecycleEvent,
     WarningLevel,
+    ParsedFeed,
     danger_notification_priority,
     incident_entity_id,
     incident_event_summary,
@@ -120,6 +122,9 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             hass, 1, f"{DOMAIN}.{entry.entry_id}.lifecycle"
         )
         self._store_lock = asyncio.Lock()
+        self._transaction_lock = asyncio.Lock()
+        self._outbox = NotificationOutbox()
+        self._lifecycle_committed = False
         self._records: dict[str, dict[str, Any]] = {}
         self._danger_records: dict[str, dict[str, Any]] = {}
         self._acknowledged: dict[str, str] = {}
@@ -150,6 +155,10 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_initialize(self) -> None:
         """Load persistent lifecycle/acknowledgement state before first poll."""
         saved = await self._store.async_load() or {}
+        self._restore_persistent_state(saved)
+
+    def _restore_persistent_state(self, saved: dict[str, Any]) -> None:
+        self._outbox = NotificationOutbox(saved.get("notification_outbox"))
         self._records = {
             str(key): dict(value)
             for key, value in (saved.get("records") or {}).items()
@@ -173,288 +182,271 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     async def _async_update_data(self) -> dict[str, Any]:
-        if self.jurisdiction.code != "NSW":
-            return await self._async_update_regional_data()
+        async with self._transaction_lock:
+            checkpoint = self._persistent_state()
+            self._lifecycle_committed = False
+            try:
+                if self.jurisdiction.code != "NSW":
+                    return await self._async_update_regional_data()
+                return await self._async_update_nsw_data()
+            except Exception:
+                if not self._lifecycle_committed:
+                    self._restore_persistent_state(checkpoint)
+                raise
 
+    async def _async_update_nsw_data(self) -> dict[str, Any]:
         feeds = dict(CORE_FEEDS)
-        bom_enabled = bool(self.config.get(CONF_ENABLE_BOM, DEFAULT_ENABLE_BOM))
-        if bom_enabled:
-            feeds.update(BOM_FEEDS)
-        snapshots_list = await asyncio.gather(
-            *(self.api.async_fetch(name, url) for name, url in feeds.items())
-        )
-        snapshots = {snapshot.name: snapshot for snapshot in snapshots_list}
-        self._parse_errors = {}
-
-        cap = self._parse("rfs_cap", snapshots["rfs_cap"], parse_cap)
-        geojson = self._parse("rfs_geojson", snapshots["rfs_geojson"], parse_geojson)
-        supplemental = self._parse(
-            "rfs_incident_alerts",
-            snapshots["rfs_incident_alerts"],
-            lambda body: parse_cap(body, source="NSW RFS IncidentAlerts polygons"),
-        )
-        rfs_districts = self._parse(
-            "rfs_fdr_toban", snapshots["rfs_fdr_toban"], parse_rfs_fire_danger
-        )
-        bom_danger = (
-            self._parse(
-                "bom_idn10016", snapshots["bom_idn10016"], parse_bom_fire_danger
-            )
-            if bom_enabled
-            else None
-        )
-        bom_warnings = (
-            self._parse(
-                "bom_nsw_warnings",
-                snapshots["bom_nsw_warnings"],
-                parse_bom_fire_weather_warnings,
-            )
-            if bom_enabled
-            else None
-        )
-
-        primary_incidents = cap.incidents if cap else ()
-        fallback_incidents = geojson.incidents if geojson else ()
-        supplemental_incidents = supplemental.incidents if supplemental else ()
-        merged = merge_incidents(
-            primary_incidents, fallback_incidents, supplemental_incidents
-        )
-        home_latitude, home_longitude = self._home_coordinates()
-        monitor_radius = float(
-            self.config.get(CONF_MONITOR_RADIUS, DEFAULT_MONITOR_RADIUS_KM)
-        )
-        located = tuple(
-            incident.with_home(home_latitude, home_longitude) for incident in merged
-        )
-        geojson_feature_count = (
-            int(geojson.metadata.get("feature_count", -1))
-            if geojson is not None
-            else -1
-        )
-        cap_current = bool(cap is not None and snapshots["rfs_cap"].response_received)
-        geojson_response_current = bool(
-            geojson is not None and snapshots["rfs_geojson"].response_received
-        )
-        empty_corroborated = bool(
-            cap_current
-            and geojson_response_current
-            and cap is not None
-            and geojson is not None
-            and not cap.incidents
-            and not geojson.incidents
-        )
-        geojson_validated = bool(
-            geojson is not None
-            and authoritative_incident_snapshot_valid(
-                response_received=geojson_response_current,
-                parsed_count=len(geojson.incidents),
-                advertised_count=geojson_feature_count,
-                existing_record_count=len(self._records),
-                empty_corroborated=empty_corroborated,
-            )
-        )
-        authoritative_merged = merge_incidents(
-            (cap.incidents if cap_current and cap is not None else ()),
-            geojson.incidents if geojson_validated and geojson is not None else (),
-            (
-                supplemental.incidents
-                if supplemental is not None
-                and snapshots["rfs_incident_alerts"].response_received
-                else ()
+        parsers = {
+            "rfs_cap": parse_cap,
+            "rfs_geojson": parse_geojson,
+            "rfs_incident_alerts": partial(
+                parse_cap, source="NSW RFS IncidentAlerts polygons"
             ),
+            "rfs_fdr_toban": parse_rfs_fire_danger,
+        }
+        if self.config.get(CONF_ENABLE_BOM, DEFAULT_ENABLE_BOM):
+            feeds.update(BOM_FEEDS)
+            parsers.update(
+                {
+                    "bom_idn10016": parse_bom_fire_danger,
+                    "bom_nsw_warnings": parse_bom_fire_weather_warnings,
+                }
+            )
+        snapshots = {
+            item.name: item
+            for item in await asyncio.gather(
+                *(
+                    self.api.async_fetch(name, url, validator=parsers[name])
+                    for name, url in feeds.items()
+                )
+            )
+        }
+        self._parse_errors = {}
+        parsed = {
+            name: self._parse(name, snapshots[name], parser)
+            for name, parser in parsers.items()
+        }
+        incident_names = ("rfs_cap", "rfs_geojson", "rfs_incident_alerts")
+        current = {
+            name: parsed[name]
+            for name in incident_names
+            if self._source_current(snapshots[name], parsed[name])
+        }
+        self._feed = self._compose_feed(
+            snapshots,
+            parsed["rfs_cap"],
+            parsed["rfs_geojson"],
+            parsed["rfs_incident_alerts"],
         )
-        authoritative_located = tuple(
-            incident.with_home(home_latitude, home_longitude)
-            for incident in authoritative_merged
+        all_items = merge_incidents(
+            *(parsed[name].incidents if parsed[name] else () for name in incident_names)
         )
-        authoritative_monitored = tuple(
-            incident
-            for incident in authoritative_located
-            if incident.distance_km is None or incident.distance_km <= monitor_radius
+        current_items = merge_incidents(
+            *(
+                current[name].incidents if name in current else ()
+                for name in incident_names
+            )
         )
-        monitored = tuple(
-            incident
-            for incident in located
-            if incident.distance_km is None or incident.distance_km <= monitor_radius
+        # Validate raw products before applying the common bushfire-only policy.
+        all_items = fire_incidents_only(_incident_feed(all_items)).incidents
+        current_items = fire_incidents_only(_incident_feed(current_items)).incidents
+        _located, monitored = self._locate_incidents(all_items)
+        current_located, current_monitored = self._locate_incidents(current_items)
+        self._set_display_incidents(monitored)
+        self._danger = self._compose_danger(
+            parsed["rfs_fdr_toban"], parsed.get("bom_idn10016"), snapshots
         )
-        self._incidents = tuple(
-            incident
-            for incident in sort_incidents(monitored)
-            if not incident.is_planned
-        )
-        self._planned = tuple(
-            incident for incident in sort_incidents(monitored) if incident.is_planned
-        )
-        self._danger = self._compose_danger(rfs_districts, bom_danger, snapshots)
-        self._warnings = (
-            list(bom_warnings.metadata.get("warnings", [])) if bom_warnings else []
-        )
-        self._feed = self._compose_feed(snapshots, cap, geojson)
-
-        snapshot_current = bool(
-            self._feed["status"] not in {"stale", "unavailable"} and geojson_validated
-        )
-        resolution_current = bool(snapshot_current and cap_current)
+        warnings = parsed.get("bom_nsw_warnings")
+        self._warnings = list(warnings.metadata.get("warnings", [])) if warnings else []
         events = await self._async_track_lifecycle(
-            authoritative_monitored,
-            authoritative_located,
-            snapshot_current,
-            resolution_current,
+            current_monitored,
+            current_located,
+            bool(current),
+            self._feed["assessment_complete"],
         )
         danger_current = bool(
-            rfs_districts
-            and str(self.config.get(CONF_DISTRICT, DEFAULT_DISTRICT)) in rfs_districts
-            and snapshots["rfs_fdr_toban"].response_received
+            self._source_current(snapshots["rfs_fdr_toban"], parsed["rfs_fdr_toban"])
+            and any(self._danger[day].get("available") for day in ("today", "tomorrow"))
         )
         danger_events = await self._async_track_danger_lifecycle(danger_current)
-        self.last_events = tuple(events)
-        self.last_danger_events = tuple(danger_events)
-        data = self._compose_data()
+        self.last_events, self.last_danger_events = tuple(events), tuple(danger_events)
         await self._async_emit_events(events, danger_events)
-        return data
+        return self._compose_data()
 
     async def _async_update_regional_data(self) -> dict[str, Any]:
-        """Update a non-NSW jurisdiction through its documented adapter."""
         profile = self.jurisdiction
-        snapshots_list = await asyncio.gather(
-            *(self.api.async_fetch(feed.name, feed.url) for feed in profile.feeds)
-        )
-        snapshots = {snapshot.name: snapshot for snapshot in snapshots_list}
-        self._parse_errors = {}
-        parsed_feeds: dict[str, Any] = {}
-        for feed in profile.feeds:
-            snapshot = snapshots[feed.name]
-            adapter = (
+        parsers = {
+            feed.name: partial(
                 _parse_regional_cap
                 if feed.parser == "cap"
-                else PARSER_NAMES[feed.parser]
-            )
-            parser = partial(
-                adapter,
+                else PARSER_NAMES[feed.parser],
                 source=profile.agency,
                 official_url=profile.official_url,
             )
-            parsed = self._parse(feed.name, snapshot, parser)
-            if parsed is not None:
-                parsed_feeds[feed.name] = fire_incidents_only(parsed)
-
-        merged: tuple[Incident, ...] = ()
-        for parsed in parsed_feeds.values():
-            merged = merge_incidents(merged, parsed.incidents)
-        home_latitude, home_longitude = self._home_coordinates()
-        monitor_radius = float(
-            self.config.get(CONF_MONITOR_RADIUS, DEFAULT_MONITOR_RADIUS_KM)
-        )
-        located = tuple(
-            incident.with_home(home_latitude, home_longitude) for incident in merged
-        )
-        monitored = tuple(
-            incident
-            for incident in located
-            if incident.distance_km is None or incident.distance_km <= monitor_radius
-        )
-        self._incidents = tuple(
-            incident
-            for incident in sort_incidents(monitored)
-            if not incident.is_planned
-        )
-        self._planned = tuple(
-            incident for incident in sort_incidents(monitored) if incident.is_planned
-        )
+            for feed in profile.feeds
+        }
+        snapshots = {
+            item.name: item
+            for item in await asyncio.gather(
+                *(
+                    self.api.async_fetch(
+                        feed.name, feed.url, validator=parsers[feed.name]
+                    )
+                    for feed in profile.feeds
+                )
+            )
+        }
+        self._parse_errors = {}
+        parsed = {}
+        for name, parser in parsers.items():
+            result = self._parse(name, snapshots[name], parser)
+            if result is not None:
+                parsed[name] = fire_incidents_only(result)
+        current = {
+            name: result
+            for name, result in parsed.items()
+            if self._source_current(snapshots[name], result)
+        }
+        merged, current_merged = (), ()
+        for result in parsed.values():
+            merged = merge_incidents(merged, result.incidents)
+        for result in current.values():
+            current_merged = merge_incidents(current_merged, result.incidents)
+        _located, monitored = self._locate_incidents(merged)
+        current_located, current_monitored = self._locate_incidents(current_merged)
+        self._set_display_incidents(monitored)
         self._danger = _unknown_danger()
         self._danger["district"] = "Not available for this jurisdiction"
         self._danger["source_note"] = (
-            "Fire-danger enrichment is not available for this jurisdiction in "
-            "this release; use the official state or territory source."
+            "Use the official state or territory fire-danger source."
         )
         self._warnings = []
-        self._feed = self._compose_regional_feed(snapshots, parsed_feeds)
-
-        all_current = bool(profile.feeds) and all(
-            snapshots[feed.name].response_received and feed.name in parsed_feeds
-            for feed in profile.feeds
-        )
-        snapshot_current = bool(
-            all_current and self._feed["status"] not in {"stale", "unavailable"}
-        )
+        self._feed = self._compose_regional_feed(snapshots, parsed)
         events = await self._async_track_lifecycle(
-            monitored,
-            located,
-            snapshot_current,
-            snapshot_current,
+            current_monitored,
+            current_located,
+            bool(current),
+            self._feed["assessment_complete"],
         )
-        self.last_events = tuple(events)
-        self.last_danger_events = ()
-        data = self._compose_data()
+        self.last_events, self.last_danger_events = tuple(events), ()
         await self._async_emit_events(events, [])
-        return data
+        return self._compose_data()
+
+    def _source_current(self, snapshot: FeedSnapshot, parsed: Any) -> bool:
+        if parsed is None or not snapshot.response_received:
+            return False
+        age = _age_seconds(snapshot.fetched_at, datetime.now(timezone.utc))
+        return bool(
+            age is not None
+            and age
+            <= int(self.config.get(CONF_STALE_AFTER, DEFAULT_STALE_AFTER_MINUTES)) * 60
+            and getattr(parsed, "metadata", {}).get("snapshot_complete", True)
+        )
+
+    def _locate_incidents(
+        self, incidents: tuple[Incident, ...]
+    ) -> tuple[tuple[Incident, ...], tuple[Incident, ...]]:
+        latitude, longitude = self._home_coordinates()
+        located = tuple(item.with_home(latitude, longitude) for item in incidents)
+        radius = float(self.config.get(CONF_MONITOR_RADIUS, DEFAULT_MONITOR_RADIUS_KM))
+        return located, tuple(
+            item
+            for item in located
+            if item.alert_distance_km is None or item.alert_distance_km <= radius
+        )
+
+    def _set_display_incidents(self, incidents: tuple[Incident, ...]) -> None:
+        self._incidents = tuple(
+            item for item in sort_incidents(incidents) if not item.is_planned
+        )
+        self._planned = tuple(
+            item for item in sort_incidents(incidents) if item.is_planned
+        )
 
     def _compose_regional_feed(
+        self, snapshots: dict[str, FeedSnapshot], parsed_feeds: dict[str, Any]
+    ) -> dict[str, Any]:
+        profile = self.jurisdiction
+        return self._feed_health(
+            snapshots,
+            parsed_feeds,
+            tuple(feed.name for feed in profile.feeds),
+            profile.agency,
+        )
+
+    def _feed_health(
         self,
         snapshots: dict[str, FeedSnapshot],
-        parsed_feeds: dict[str, Any],
+        parsed: dict[str, Any],
+        required: tuple[str, ...],
+        source: str,
     ) -> dict[str, Any]:
-        """Build common health metadata without presenting missing data as safe."""
-        profile = self.jurisdiction
-        available = [
-            snapshots[feed.name] for feed in profile.feeds if feed.name in parsed_feeds
-        ]
         now = datetime.now(timezone.utc)
+        available = [name for name in required if parsed.get(name) is not None]
+        current = [
+            name
+            for name in required
+            if self._source_current(snapshots[name], parsed.get(name))
+        ]
         fetched = max(
-            (snapshot.fetched_at for snapshot in available if snapshot.fetched_at),
-            default=None,
-        )
-        generated = max(
             (
-                parsed.generated_at
-                for parsed in parsed_feeds.values()
-                if parsed.generated_at
+                snapshots[name].fetched_at
+                for name in available
+                if snapshots[name].fetched_at
             ),
             default=None,
         )
-        age_seconds = _age_seconds(fetched, now)
-        stale_after = (
+        age = _age_seconds(fetched, now)
+        threshold = (
             int(self.config.get(CONF_STALE_AFTER, DEFAULT_STALE_AFTER_MINUTES)) * 60
         )
+        complete = bool(required) and len(current) == len(required)
         if not available:
             status = "unavailable"
-        elif age_seconds is None or age_seconds > stale_after:
+        elif age is None or age > threshold:
             status = "stale"
         elif (
-            self._parse_errors
-            or len(available) != len(profile.feeds)
-            or any(
-                snapshot.status in {"retained", "backoff", "unavailable"}
-                for snapshot in snapshots.values()
-            )
+            not complete
+            or self._parse_errors
+            or any(not item.response_received for item in snapshots.values())
         ):
             status = "degraded"
         else:
             status = "fresh"
+        generated = max(
+            (
+                getattr(parsed[name], "generated_at", None)
+                for name in available
+                if getattr(parsed[name], "generated_at", None)
+            ),
+            default=None,
+        )
         return {
             "status": status,
+            "assessment_complete": complete,
+            "current_incident_feeds": current,
             "last_successful_update": _iso(fetched),
-            "data_generated_at": _iso(generated or fetched),
-            "age_seconds": age_seconds,
-            "stale_after_seconds": stale_after,
-            "source_name": profile.agency,
-            "official_url": profile.official_url,
-            "attribution": profile.attribution,
+            "data_generated_at": _iso(generated),
+            "age_seconds": age,
+            "stale_after_seconds": threshold,
+            "source_name": source,
+            "official_url": self.jurisdiction.official_url,
+            "attribution": self.jurisdiction.attribution,
             "cross_check": {
-                "feed_count": len(profile.feeds),
+                "feed_count": len(required),
                 "available_count": len(available),
             },
             "sources": {
                 name: {
-                    "status": snapshot.status,
-                    "url": snapshot.url,
-                    "last_successful_fetch": _iso(snapshot.fetched_at),
-                    "last_changed": _iso(snapshot.changed_at),
-                    "last_modified": _iso(snapshot.last_modified),
-                    "from_cache": snapshot.from_cache,
-                    "error": snapshot.error or self._parse_errors.get(name),
+                    "status": item.status,
+                    "url": item.url,
+                    "last_successful_fetch": _iso(item.fetched_at),
+                    "last_changed": _iso(item.changed_at),
+                    "last_modified": _iso(item.last_modified),
+                    "from_cache": item.from_cache,
+                    "error": item.error or self._parse_errors.get(name),
                 }
-                for name, snapshot in snapshots.items()
+                for name, item in snapshots.items()
             },
         }
 
@@ -490,37 +482,56 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     ) -> dict[str, Any]:
         district = str(self.config.get(CONF_DISTRICT, DEFAULT_DISTRICT))
         rfs = (rfs_districts or {}).get(district, {})
-        issued_rfs = _iso(snapshots["rfs_fdr_toban"].changed_at)
-        bom_issued = _iso((bom or {}).get("issued_at"))
+        snapshot = snapshots["rfs_fdr_toban"]
+        published = snapshot.last_modified or snapshot.changed_at
+        sydney = ZoneInfo("Australia/Sydney")
+        local_today = datetime.now(sydney).date()
+        source_date = _as_datetime(rfs.get("source_date"))
+        anchor = (
+            source_date.date()
+            if source_date
+            else (published.astimezone(sydney).date() if published else None)
+        )
+        declarations = (
+            {
+                (anchor + timedelta(days=offset)).isoformat(): dict(
+                    rfs.get(period) or {}
+                )
+                for offset, period in enumerate(("today", "tomorrow"))
+            }
+            if anchor
+            else {}
+        )
         bom_forecasts = list((bom or {}).get("districts", {}).get(district, []))
-        local_today = dt_util.now().date()
         by_date = {item.get("date"): item for item in bom_forecasts}
+        current = self._source_current(snapshot, rfs_districts)
 
-        def day(name: str, offset: int) -> dict[str, Any]:
-            rfs_day = dict(rfs.get(name) or {})
+        def day(offset: int) -> dict[str, Any]:
             date = (local_today + timedelta(days=offset)).isoformat()
+            declaration = declarations.get(date, {})
+            valid = current and bool(declaration)
             bom_day = by_date.get(date, {})
             return {
                 "date": date,
-                "rating": rfs_day.get("rating", "Unknown"),
+                "available": valid,
+                "rating": declaration.get("rating", "Unknown") if valid else "Unknown",
+                "total_fire_ban": declaration.get("total_fire_ban") if valid else None,
                 "fbi": bom_day.get("fbi"),
-                "total_fire_ban": rfs_day.get("total_fire_ban"),
-                "issued_at": issued_rfs,
-                "rating_source": "NSW RFS fdrToban.xml" if rfs_day else None,
+                "issued_at": _iso(published),
+                "rating_source": "NSW RFS fdrToban.xml" if declaration else None,
                 "fbi_source": "BOM IDN10016" if bom_day else None,
+                "retained": not current,
             }
 
         return {
             "district": district,
-            "today": day("today", 0),
-            "tomorrow": day("tomorrow", 1),
+            "today": day(0),
+            "tomorrow": day(1),
             "forecast": bom_forecasts,
-            "bom_issued_at": bom_issued,
-            "rfs_issued_at": issued_rfs,
-            "source_note": (
-                "NSW RFS is the source of truth for ratings and Total Fire Bans; "
-                "BOM IDN10016 supplements the four-day Fire Behaviour Index."
-            ),
+            "bom_issued_at": _iso((bom or {}).get("issued_at")),
+            "rfs_issued_at": _iso(published),
+            "last_known_declarations": declarations,
+            "source_note": "NSW RFS declarations are bound to their source dates; unavailable data is never a No Ban declaration.",
         }
 
     def _compose_feed(
@@ -528,68 +539,29 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         snapshots: dict[str, FeedSnapshot],
         cap: Any | None,
         geojson: Any | None,
+        supplemental: Any | None = None,
     ) -> dict[str, Any]:
-        now = datetime.now(timezone.utc)
-        primary = snapshots["rfs_cap"] if cap else snapshots["rfs_geojson"]
-        generated = None
-        if cap:
-            generated = cap.generated_at
-        elif geojson:
-            generated = snapshots["rfs_geojson"].last_modified or geojson.generated_at
-        generated = generated or primary.changed_at or primary.fetched_at
-        age_seconds = _age_seconds(generated, now)
-        stale_after = (
-            int(self.config.get(CONF_STALE_AFTER, DEFAULT_STALE_AFTER_MINUTES)) * 60
+        result = self._feed_health(
+            snapshots,
+            {
+                "rfs_cap": cap,
+                "rfs_geojson": geojson,
+                "rfs_incident_alerts": supplemental,
+            },
+            ("rfs_cap", "rfs_geojson", "rfs_incident_alerts"),
+            "NSW RFS official incident feeds",
         )
-        if cap is None and geojson is None:
-            status = "unavailable"
-        elif age_seconds is None or age_seconds > stale_after:
-            status = "stale"
-        elif cap is None:
-            status = "degraded"
-        elif self._parse_errors or any(
-            snapshots[name].status in {"retained", "backoff", "unavailable"}
-            for name in ("rfs_fdr_toban", "bom_idn10016", "bom_nsw_warnings")
-            if name in snapshots
-        ):
-            status = "degraded"
-        else:
-            status = "fresh"
-
-        cap_ids = {incident.id for incident in cap.incidents} if cap else set()
-        geo_ids = {incident.id for incident in geojson.incidents} if geojson else set()
-        source_details = {
-            name: {
-                "status": snapshot.status,
-                "url": snapshot.url,
-                "last_successful_fetch": _iso(snapshot.fetched_at),
-                "last_changed": _iso(snapshot.changed_at),
-                "last_modified": _iso(snapshot.last_modified),
-                "from_cache": snapshot.from_cache,
-                "error": snapshot.error or self._parse_errors.get(name),
-            }
-            for name, snapshot in snapshots.items()
-        }
-        return {
-            "status": status,
-            "last_successful_update": _iso(primary.fetched_at),
-            "data_generated_at": _iso(generated),
-            "age_seconds": age_seconds,
-            "stale_after_seconds": stale_after,
-            "source_name": "NSW RFS CAP" if cap else "NSW RFS GeoJSON fallback",
-            "official_url": OFFICIAL_INCIDENTS_URL,
-            "attribution": (
-                "© State of New South Wales (NSW Rural Fire Service). "
-                "For current information go to www.rfs.nsw.gov.au."
-            ),
-            "cross_check": {
+        cap_ids = {item.id for item in cap.incidents} if cap else set()
+        geo_ids = {item.id for item in geojson.incidents} if geojson else set()
+        result["cross_check"].update(
+            {
                 "cap_count": len(cap_ids),
                 "geojson_count": len(geo_ids),
                 "cap_only_count": len(cap_ids - geo_ids),
                 "geojson_only_count": len(geo_ids - cap_ids),
-            },
-            "sources": source_details,
-        }
+            }
+        )
+        return result
 
     def _compose_data(self) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
@@ -662,6 +634,18 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "weather": self._weather_context(),
             "readiness_entities": list(self.config.get(CONF_READINESS_ENTITIES, [])),
             "alerts_assigned": bool(alert_targets),
+            "notification_delivery": self._outbox.status(),
+            "last_known_warning_records": [
+                {
+                    "incident_id": key,
+                    "title": value.get("title"),
+                    "warning_level": value.get("warning_level"),
+                    "retained": True,
+                }
+                for key, value in self._records.items()
+                if value.get("qualified")
+                and key not in {item.id for item in self._incidents}
+            ][:SUMMARY_INCIDENT_LIMIT],
             "alert_targets": list(alert_targets),
             "disclaimer": (
                 f"Supplementary awareness only. Check {profile.agency}, your "
@@ -693,6 +677,21 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if warning == WarningLevel.ADVICE:
                 return "advice"
             return "incident_nearby"
+        # Do not advertise absence during a partial assessment or while a
+        # previously qualifying incident awaits the second healthy snapshot.
+        current_ids = {item.id for item in self._incidents}
+        if (
+            not self._feed.get("assessment_complete", False)
+            or any(
+                value.get("qualified") and key not in current_ids
+                for key, value in self._records.items()
+            )
+            or any(
+                item.warning_rank > 0 and item.alert_distance_km is None
+                for item in self._incidents
+            )
+        ):
+            return "unavailable"
         if any(
             incident.distance_km is not None
             and incident.distance_km
@@ -703,7 +702,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return "no_current_warning"
 
     def _qualifies(self, incident: Incident) -> bool:
-        if incident.is_planned or incident.distance_km is None:
+        if incident.is_planned or incident.alert_distance_km is None:
             return False
         radius = {
             WarningLevel.EMERGENCY_WARNING: float(
@@ -717,10 +716,10 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
         }.get(incident.warning_level)
         if radius is not None:
-            return incident.distance_km <= radius
+            return incident.alert_distance_km <= radius
         return bool(
             incident.is_fire
-            and incident.distance_km
+            and incident.alert_distance_km
             <= float(
                 self.config.get(
                     CONF_UNCLASSIFIED_RADIUS, DEFAULT_UNCLASSIFIED_RADIUS_KM
@@ -772,19 +771,15 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             baseline_complete=previous_baseline,
             authoritative_incidents=authoritative_incidents,
             allow_missing_updates=resolution_current,
+            allow_deescalation=resolution_current,
         )
         self._records = records
         self._baseline_complete = baseline_complete
-        state_changed = (
-            records != previous_records or baseline_complete != previous_baseline
-        )
         for event in events:
             if event.lifecycle in {"escalated", "resolved", "left_radius"}:
-                acknowledgement = self._acknowledged.pop(event.incident_id, None)
-                snooze = self._snoozed.pop(event.incident_id, None)
-                state_changed = bool(acknowledgement or snooze) or state_changed
-        if state_changed:
-            await self._async_save_state()
+                self._acknowledged.pop(event.incident_id, None)
+                self._snoozed.pop(event.incident_id, None)
+        # Persisted atomically with staged notifications by _async_emit_events.
         if not previous_baseline and baseline_complete:
             _LOGGER.info(
                 "Established incident baseline for %s; initial alerts suppressed",
@@ -807,8 +802,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._danger_records = records
         self._danger_baseline_complete = baseline_complete
-        if records != previous_records or baseline_complete != previous_baseline:
-            await self._async_save_state()
+        # Persisted atomically with staged notifications by _async_emit_events.
         if not previous_baseline and baseline_complete:
             _LOGGER.info(
                 "Established fire-danger baseline for %s; initial alerts suppressed",
@@ -816,24 +810,57 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         return list(events)
 
+    def _persistent_state(self) -> dict[str, Any]:
+        return deepcopy(
+            {
+                "baseline_complete": self._baseline_complete,
+                "danger_baseline_complete": self._danger_baseline_complete,
+                "records": self._records,
+                "danger_records": self._danger_records,
+                "acknowledged": self._acknowledged,
+                "snoozed": self._snoozed,
+                "notification_outbox": self._outbox.export(),
+            }
+        )
+
     async def _async_save_state(self) -> None:
         async with self._store_lock:
-            await self._store.async_save(
-                {
-                    "baseline_complete": self._baseline_complete,
-                    "danger_baseline_complete": self._danger_baseline_complete,
-                    "records": self._records,
-                    "danger_records": self._danger_records,
-                    "acknowledged": self._acknowledged,
-                    "snoozed": self._snoozed,
-                }
+            await self._store.async_save(self._persistent_state())
+
+    async def _async_flush_notifications(self) -> bool:
+        async def send(full_service: str, payload: dict[str, Any]) -> None:
+            _, service = full_service.split(".", 1)
+            if not self.hass.services.has_service("notify", service):
+                raise HomeAssistantError(
+                    f"Notification service {full_service} is unavailable"
+                )
+            await self.hass.services.async_call(
+                "notify", service, payload, blocking=True
             )
+
+        return await self._outbox.async_flush(
+            send,
+            self._async_save_state,
+            services=_notify_services(self.config.get(CONF_NOTIFY_SERVICES, [])),
+        )
+
+    def _publish_local_data(self) -> None:
+        """Publish local changes without resetting feed polling or feed health."""
+        self.data = self._compose_data()
+        self.async_update_listeners()
+
+    async def async_retry_notifications(self, _now: datetime) -> None:
+        """Retry pending deliveries independently of the five-minute feed poll."""
+        async with self._transaction_lock:
+            if await self._async_flush_notifications():
+                self._publish_local_data()
 
     async def _async_emit_events(
         self,
         events: list[LifecycleEvent],
         danger_events: list[DangerLifecycleEvent],
     ) -> None:
+        payloads: list[dict[str, Any]] = []
         direct_delivery_configured = bool(
             _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
         )
@@ -863,7 +890,8 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "test": False,
                 "official_url": self.jurisdiction.official_url,
             }
-            self.hass.bus.async_fire(EVENT_ALERT, payload)
+            self._outbox.discard_tag(payload["notification_tag"])
+            payloads.append(payload)
             if event.qualifies_for_alert and notification_allowed:
                 await self._async_notify(event, test=False)
 
@@ -891,9 +919,18 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "test": False,
                 "official_url": OFFICIAL_DANGER_URL,
             }
-            self.hass.bus.async_fire(EVENT_ALERT, payload)
+            self._outbox.discard_tag(payload["notification_tag"])
+            payloads.append(payload)
             if event.qualifies_for_alert:
                 await self._async_notify_danger(event)
+
+        # Lifecycle advancement and the delivery obligation are one durable
+        # transaction. A failure here causes the update wrapper to roll back.
+        await self._async_save_state()
+        self._lifecycle_committed = True
+        for payload in payloads:
+            self.hass.bus.async_fire(EVENT_ALERT, payload)
+        await self._async_flush_notifications()
 
     def _notification_allowed(self, event: LifecycleEvent) -> bool:
         if event.lifecycle in {
@@ -1004,7 +1041,14 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
         priority = incident_notification_priority(event, test=test)
         _apply_notification_priority(data, priority, "incident")
-        await self._async_send_notification(services, title, message, data)
+        await self._async_send_notification(
+            services,
+            title,
+            message,
+            data,
+            incident_id=event.incident_id,
+            expires_at=incident.expires_at if incident else None,
+        )
 
     async def _async_notify_danger(self, event: DangerLifecycleEvent) -> None:
         services = _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
@@ -1038,112 +1082,122 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         title: str,
         message: str,
         data: dict[str, Any],
+        *,
+        incident_id: str | None = None,
+        expires_at: datetime | None = None,
     ) -> None:
-        for full_service in services:
-            _, service = full_service.split(".", 1)
-            if not self.hass.services.has_service("notify", service):
-                _LOGGER.warning(
-                    "Configured notification service %s is unavailable", full_service
-                )
-                continue
-            try:
-                await self.hass.services.async_call(
-                    "notify",
-                    service,
-                    {"title": title, "message": message, "data": data},
-                    blocking=True,
-                )
-            except HomeAssistantError as err:
-                _LOGGER.error("Notification through %s failed: %s", full_service, err)
+        self._outbox.stage(
+            services,
+            title,
+            message,
+            data,
+            now=datetime.now(timezone.utc),
+            incident_id=incident_id,
+            expires_at=expires_at,
+        )
 
     async def async_acknowledge(self, incident_id: str) -> None:
         """Acknowledge current incident updates until a later escalation."""
-        if not any(
-            item.id == incident_id for item in (*self._incidents, *self._planned)
-        ):
-            raise HomeAssistantError(f"Unknown active incident: {incident_id}")
-        self._acknowledged[incident_id] = datetime.now(timezone.utc).isoformat()
-        self._snoozed.pop(incident_id, None)
-        await self._async_save_state()
-        self.async_set_updated_data(self._compose_data())
+        async with self._transaction_lock:
+            if not any(
+                item.id == incident_id for item in (*self._incidents, *self._planned)
+            ):
+                raise HomeAssistantError(f"Unknown active incident: {incident_id}")
+            self._outbox.suppress(incident_id)
+            self._acknowledged[incident_id] = datetime.now(timezone.utc).isoformat()
+            self._snoozed.pop(incident_id, None)
+            await self._async_save_state()
+            self._publish_local_data()
 
     async def async_snooze(self, incident_id: str, duration_minutes: int) -> None:
         """Temporarily suppress non-emergency notifications."""
-        incident = next(
-            (
-                item
-                for item in (*self._incidents, *self._planned)
-                if item.id == incident_id
-            ),
-            None,
-        )
-        if incident is None:
-            raise HomeAssistantError(f"Unknown active incident: {incident_id}")
-        if incident.warning_level == WarningLevel.EMERGENCY_WARNING:
-            raise HomeAssistantError(
-                "Emergency Warnings can be acknowledged but not snoozed"
+        async with self._transaction_lock:
+            incident = next(
+                (
+                    item
+                    for item in (*self._incidents, *self._planned)
+                    if item.id == incident_id
+                ),
+                None,
             )
-        maximum = 30 if incident.warning_level == WarningLevel.WATCH_AND_ACT else 120
-        if duration_minutes < 1 or duration_minutes > maximum:
-            raise HomeAssistantError(
-                f"Snooze must be between 1 and {maximum} minutes for this warning level"
+            if incident is None:
+                raise HomeAssistantError(f"Unknown active incident: {incident_id}")
+            if incident.warning_level == WarningLevel.EMERGENCY_WARNING:
+                raise HomeAssistantError(
+                    "Emergency Warnings can be acknowledged but not snoozed"
+                )
+            maximum = (
+                30 if incident.warning_level == WarningLevel.WATCH_AND_ACT else 120
             )
-        self._snoozed[incident_id] = (
-            datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
-        ).isoformat()
-        self._acknowledged.pop(incident_id, None)
-        await self._async_save_state()
-        self.async_set_updated_data(self._compose_data())
+            if duration_minutes < 1 or duration_minutes > maximum:
+                raise HomeAssistantError(
+                    f"Snooze must be between 1 and {maximum} minutes for this warning level"
+                )
+            self._outbox.suppress(incident_id)
+            self._snoozed[incident_id] = (
+                datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
+            ).isoformat()
+            self._acknowledged.pop(incident_id, None)
+            await self._async_save_state()
+            self._publish_local_data()
 
     async def async_test_alert(self, level: str) -> None:
         """Emit and optionally notify a clearly labelled, non-critical test."""
-        normalized = normalize_warning(level)
-        if normalized not in {
-            WarningLevel.ADVICE,
-            WarningLevel.WATCH_AND_ACT,
-            WarningLevel.EMERGENCY_WARNING,
-        }:
-            raise HomeAssistantError(
-                "level must be Advice, Watch and Act, or Emergency Warning"
+        async with self._transaction_lock:
+            normalized = normalize_warning(level)
+            if normalized not in {
+                WarningLevel.ADVICE,
+                WarningLevel.WATCH_AND_ACT,
+                WarningLevel.EMERGENCY_WARNING,
+            }:
+                raise HomeAssistantError(
+                    "level must be Advice, Watch and Act, or Emergency Warning"
+                )
+            latitude, longitude = self._home_coordinates()
+            incident = Incident(
+                id=f"test-{self.entry.entry_id}",
+                title="Australian Fire Watch test",
+                incident_type="Test",
+                warning_level=normalized,
+                control_status="Test only",
+                is_fire=False,
+                latitude=latitude,
+                longitude=longitude,
+                distance_km=0.0,
+                official_url=self.jurisdiction.official_url,
+                instruction="This is only a notification-path test. No incident exists.",
+                sources=("Australian Fire Watch test",),
             )
-        latitude, longitude = self._home_coordinates()
-        incident = Incident(
-            id=f"test-{self.entry.entry_id}",
-            title="Australian Fire Watch test",
-            incident_type="Test",
-            warning_level=normalized,
-            control_status="Test only",
-            is_fire=False,
-            latitude=latitude,
-            longitude=longitude,
-            distance_km=0.0,
-            official_url=self.jurisdiction.official_url,
-            instruction="This is only a notification-path test. No incident exists.",
-            sources=("Australian Fire Watch test",),
-        )
-        event = LifecycleEvent(incident.id, "test", incident, None)
-        payload = {
-            "alert_kind": "incident",
-            "entry_id": self.entry.entry_id,
-            "location_name": str(self.config.get(CONF_NAME, DEFAULT_NAME)),
-            "lifecycle": "test",
-            "incident_id": incident.id,
-            "incident": incident.as_dict(),
-            "previous": {},
-            "qualifies_for_alert": False,
-            "notification_allowed": True,
-            "delivery_priority": "normal",
-            "direct_delivery_configured": bool(
-                _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
-            ),
-            "summary": f"TEST — {normalized}",
-            "recommended_action": "Verify delivery only; no incident exists.",
-            "notification_tag": f"australian-fire-watch-test-{self.entry.entry_id}",
-            "test": True,
-            "official_url": self.jurisdiction.official_url,
-        }
-        self.hass.bus.async_fire(EVENT_ALERT, payload)
-        await self._async_notify(event, test=True)
+            event = LifecycleEvent(incident.id, "test", incident, None)
+            payload = {
+                "alert_kind": "incident",
+                "entry_id": self.entry.entry_id,
+                "location_name": str(self.config.get(CONF_NAME, DEFAULT_NAME)),
+                "lifecycle": "test",
+                "incident_id": incident.id,
+                "incident": incident.as_dict(),
+                "previous": {},
+                "qualifies_for_alert": False,
+                "notification_allowed": True,
+                "delivery_priority": "normal",
+                "direct_delivery_configured": bool(
+                    _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
+                ),
+                "summary": f"TEST — {normalized}",
+                "recommended_action": "Verify delivery only; no incident exists.",
+                "notification_tag": f"australian-fire-watch-test-{self.entry.entry_id}",
+                "test": True,
+                "official_url": self.jurisdiction.official_url,
+            }
+            self.hass.bus.async_fire(EVENT_ALERT, payload)
+            await self._async_notify(event, test=True)
+            await self._async_save_state()
+            await self._async_flush_notifications()
+            self._publish_local_data()
+
+
+def _incident_feed(incidents: tuple[Incident, ...]) -> ParsedFeed:
+    return ParsedFeed(incidents)
 
 
 def _parse_regional_cap(body: bytes | str, *, source: str, official_url: str) -> Any:

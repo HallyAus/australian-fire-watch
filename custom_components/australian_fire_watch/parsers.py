@@ -201,17 +201,26 @@ def parse_cap(
 ) -> ParsedFeed:
     """Parse CAP-AU alerts embedded in an EDXL distribution."""
     root = _safe_xml(payload)
+    if _local(root).casefold() not in {"distribution", "edxldistribution", "alert"}:
+        raise FeedParseError("Expected CAP alert or EDXL distribution")
     generated_at = _parse_datetime(_text(root, "dateTimeSent"))
+    alerts = _descendants(root, "alert")
+    if not alerts and generated_at is None:
+        raise FeedParseError("Empty CAP distribution has no generation timestamp")
+    complete = True
     incidents: list[Incident] = []
-    for alert in _descendants(root, "alert"):
+    for alert in alerts:
         # CAP explicitly distinguishes live publisher information from Test,
         # Exercise, Draft and System messages. Unknown/missing status also
         # fails closed: none of those records may become a household alert.
-        if _text(alert, "status").casefold() != "actual":
+        status = _text(alert, "status").casefold()
+        if status != "actual":
+            if status not in {"test", "exercise", "draft", "system"}:
+                complete = False
             continue
         info_nodes = _children(alert, "info")
         if not info_nodes:
-            continue
+            raise FeedParseError("Actual CAP alert has no info block")
         info = info_nodes[0]
         parameters = {
             _text(node, "valueName").casefold(): _text(node, "value")
@@ -247,7 +256,7 @@ def parse_cap(
 
         incident_id = _text(alert, "incidents") or _text(alert, "identifier")
         if not incident_id:
-            continue
+            raise FeedParseError("Actual CAP alert has no incident identifier")
         warning = parameters.get("alertlevel") or fields.get("ALERT LEVEL")
         incident_type = (
             parameters.get("incidenttype")
@@ -285,14 +294,65 @@ def parse_cap(
                 description=_plain_html(description) or None,
                 official_url=_text(info, "web") or official_url,
                 polygons=polygons,
+                warning_areas=tuple((ring,) for ring in polygons),
                 sources=(source,),
             )
         )
     return ParsedFeed(
         tuple(incidents),
         generated_at,
-        {"distribution_id": _text(root, "distributionID")},
+        {
+            "distribution_id": _text(root, "distributionID"),
+            "feature_count": len(alerts),
+            "snapshot_complete": complete,
+        },
     )
+
+
+def _feature_collection(data: Any, label: str) -> list[dict[str, Any]]:
+    """Reject malformed/truncated products before filtering incident types."""
+    if not isinstance(data, dict) or data.get("type") != "FeatureCollection":
+        raise FeedParseError(f"{label} root is not a FeatureCollection")
+    features = data.get("features")
+    if not isinstance(features, list):
+        raise FeedParseError(f"{label} features must be an explicit array")
+    collection_properties = data.get("properties") or {}
+    if not isinstance(collection_properties, dict):
+        raise FeedParseError(f"{label} has invalid collection properties")
+    if data.get("exceededTransferLimit") or collection_properties.get(
+        "exceededTransferLimit"
+    ):
+        raise FeedParseError(f"{label} is truncated by the publisher")
+    for feature in features:
+        if not isinstance(feature, dict) or not isinstance(
+            feature.get("properties"), dict
+        ):
+            raise FeedParseError(f"{label} has an invalid feature/properties record")
+        geometry = feature.get("geometry")
+        if geometry is not None and not isinstance(geometry, dict):
+            raise FeedParseError(f"{label} has invalid geometry")
+    return features
+
+
+def _require_properties(
+    properties: dict[str, Any], keys: tuple[str, ...], label: str
+) -> None:
+    """A renamed discriminator is a schema failure, not a non-fire incident."""
+    if not any(properties.get(key) not in (None, "") for key in keys):
+        raise FeedParseError(
+            f"{label} record is missing expected fields: {', '.join(keys)}"
+        )
+
+
+def _rss_channel(root: ET.Element) -> ET.Element:
+    """Require a real RSS channel or Atom feed, including valid empty feeds."""
+    if _local(root).casefold() == "feed":
+        return root
+    if _local(root).casefold() == "rss":
+        channels = _children(root, "channel")
+        if len(channels) == 1:
+            return channels[0]
+    raise FeedParseError("Expected an RSS channel or Atom feed")
 
 
 def _flatten_geojson_geometries(geometry: Any) -> Iterable[dict[str, Any]]:
@@ -346,6 +406,23 @@ def _geojson_polygons(geometry: Any) -> tuple[tuple[tuple[float, float], ...], .
     return tuple(polygons)
 
 
+def _geojson_warning_areas(geometry: Any) -> tuple:
+    """Preserve exterior/interior rings; holes must not become warning areas."""
+    areas = []
+    for item in _flatten_geojson_geometries(geometry):
+        coordinates = item.get("coordinates", [])
+        groups = (
+            [coordinates]
+            if item.get("type") == "Polygon"
+            else (coordinates if item.get("type") == "MultiPolygon" else [])
+        )
+        for group in groups:
+            rings = _geojson_polygons({"type": "Polygon", "coordinates": group})
+            if rings:
+                areas.append(rings)
+    return tuple(areas)
+
+
 def _id_from_guid(guid: str, fallback: str) -> str:
     path = urlparse(guid).path.rstrip("/")
     candidate = path.rsplit("/", 1)[-1] if path else ""
@@ -363,8 +440,7 @@ def parse_geojson(payload: bytes | str) -> ParsedFeed:
         data = json.loads(data_text)
     except (json.JSONDecodeError, TypeError) as err:
         raise FeedParseError(f"Invalid GeoJSON: {err}") from err
-    if not isinstance(data, dict) or data.get("type") != "FeatureCollection":
-        raise FeedParseError("GeoJSON root is not a FeatureCollection")
+    _feature_collection(data, "NSW GeoJSON")
     incidents: list[Incident] = []
     generated_candidates: list[datetime] = []
     for index, feature in enumerate(data.get("features", [])):
@@ -373,6 +449,9 @@ def parse_geojson(payload: bytes | str) -> ParsedFeed:
         properties = feature.get("properties") or {}
         if not isinstance(properties, dict):
             continue
+        _require_properties(
+            properties, ("guid", "title", "description"), "NSW incident"
+        )
         description = properties.get("description", "")
         fields = _description_fields(description)
         latitude, longitude = _geojson_point(feature.get("geometry"))
@@ -411,6 +490,7 @@ def parse_geojson(payload: bytes | str) -> ParsedFeed:
                 description=_plain_html(description) or None,
                 official_url=str(properties.get("link") or OFFICIAL_INCIDENTS_URL),
                 polygons=polygons,
+                warning_areas=_geojson_warning_areas(feature.get("geometry")),
                 sources=("NSW RFS GeoJSON",),
             )
         )
@@ -489,6 +569,9 @@ def merge_incidents(
             description=_prefer(current.description, candidate.description),
             official_url=_prefer(current.official_url, candidate.official_url),
             polygons=polygons,
+            warning_areas=tuple(
+                dict.fromkeys((*current.warning_areas, *candidate.warning_areas))
+            ),
             sources=tuple(dict.fromkeys((*current.sources, *candidate.sources))),
         )
     return tuple(merged.values())
@@ -497,12 +580,30 @@ def merge_incidents(
 def parse_rfs_fire_danger(payload: bytes | str) -> dict[str, dict[str, Any]]:
     """Parse RFS today/tomorrow FDR and Total Fire Ban source-of-truth."""
     root = _safe_xml(payload)
+    if _local(root) != "FireDangerMap" or not _descendants(root, "District"):
+        raise FeedParseError("Expected a FireDangerMap containing districts")
+    source_date = _parse_datetime(
+        _text(root, "MapDate") or _text(root, "Date"), assume_nsw_local=True
+    )
     districts: dict[str, dict[str, Any]] = {}
     for district in _descendants(root, "District"):
         name = _text(district, "Name")
-        if not name:
-            continue
+        if not name or not any(
+            _children(district, tag)
+            for tag in (
+                "DangerLevelToday",
+                "FireBanToday",
+                "DangerLevelTomorrow",
+                "FireBanTomorrow",
+            )
+        ):
+            raise FeedParseError("Incomplete fire-danger district record")
         districts[name] = {
+            "source_date": source_date.astimezone(ZoneInfo("Australia/Sydney"))
+            .date()
+            .isoformat()
+            if source_date
+            else None,
             "region_number": _text(district, "RegionNumber") or None,
             "councils": [
                 item.strip()
@@ -526,6 +627,8 @@ def parse_rfs_fire_danger(payload: bytes | str) -> dict[str, dict[str, Any]]:
 def parse_bom_fire_danger(payload: bytes | str) -> dict[str, Any]:
     """Parse BOM public product IDN10016 (four-day FBI/FDR for NSW)."""
     root = _safe_xml(payload)
+    if _local(root) != "product" or not _descendants(root, "amoc"):
+        raise FeedParseError("Expected a BOM product with issue metadata")
     amoc_nodes = _descendants(root, "amoc")
     amoc = amoc_nodes[0] if amoc_nodes else root
     result: dict[str, Any] = {
@@ -574,8 +677,7 @@ def parse_bom_fire_danger(payload: bytes | str) -> dict[str, Any]:
 def parse_bom_fire_weather_warnings(payload: bytes | str) -> ParsedFeed:
     """Parse NSW/ACT BOM warning RSS, retaining only fire-weather items."""
     root = _safe_xml(payload)
-    channels = _descendants(root, "channel")
-    channel = channels[0] if channels else root
+    channel = _rss_channel(root)
     generated_at = _parse_datetime(
         _text(channel, "lastBuildDate") or _text(channel, "pubDate")
     )

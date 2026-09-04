@@ -1,0 +1,3 @@
+# Runtime dependency versions validated for this release.
+pytest-homeassistant-custom-component==0.13.363
+homeassistant==2026.9.0
