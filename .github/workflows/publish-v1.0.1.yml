@@ -1,0 +1,80 @@
+name: Publish v1.0.1
+
+on:
+  push:
+    branches: [release/publish-v1.0.1]
+    paths: [.github/workflows/publish-v1.0.1.yml]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: australian-fire-watch-release-v1.0.1
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'HallyAus/australian-fire-watch' && github.ref == 'refs/heads/release/publish-v1.0.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_REPO: HallyAus/australian-fire-watch
+      RELEASE_SHA: c8cfcb39167138e6809a346f2fec181b84558cd2
+      RELEASE_TAG: v1.0.1
+    steps:
+      - name: Verify exact source, version and successful validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$RELEASE_REPO/branches/main" --jq .commit.sha)" = "$RELEASE_SHA"
+          gh api "repos/$RELEASE_REPO/actions/runs/33923943012" > "$RUNNER_TEMP/validation.json"
+          jq -e --arg sha "$RELEASE_SHA" '.head_sha == $sha and .head_branch == "main" and .event == "push" and .status == "completed" and .conclusion == "success" and .path == ".github/workflows/validate.yml"' "$RUNNER_TEMP/validation.json"
+          gh api "repos/$RELEASE_REPO/actions/runs/33923943012/jobs?per_page=100" > "$RUNNER_TEMP/jobs.json"
+          jq -e '.total_count == 5 and (.jobs | length == 5) and all(.jobs[]; .status == "completed" and .conclusion == "success")' "$RUNNER_TEMP/jobs.json"
+          gh api "repos/$RELEASE_REPO/contents/custom_components/australian_fire_watch/manifest.json?ref=$RELEASE_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/manifest.json"
+          jq -e '.domain == "australian_fire_watch" and .version == "1.0.1"' "$RUNNER_TEMP/manifest.json"
+          gh api "repos/$RELEASE_REPO/contents/custom_components/australian_fire_watch/const.py?ref=$RELEASE_SHA" --jq .content | base64 --decode > "$RUNNER_TEMP/const.py"
+          grep -Fx 'VERSION = "1.0.1"' "$RUNNER_TEMP/const.py"
+          gh api "repos/$RELEASE_REPO/git/matching-refs/tags/$RELEASE_TAG" > "$RUNNER_TEMP/refs.json"
+          jq -e --arg sha "$RELEASE_SHA" --arg ref "refs/tags/$RELEASE_TAG" '[.[] | select(.ref == $ref)] | all(.[]; .object.type == "commit" and .object.sha == $sha)' "$RUNNER_TEMP/refs.json"
+      - name: Publish stable release from the validated commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          ## Reliability and alert-safety fixes
+
+          - Feed outages no longer turn an unreliable warning assessment into an Off or no-warning state. Last-known information is explicitly retained rather than treated as a clearance.
+          - Healthy official sources can raise or escalate alerts independently; downgrades and resolutions require stronger evidence.
+          - Feed documents are validated before replacing the last good snapshot. Invalid, partial and maintenance responses are distinguished from valid empty feeds.
+          - Fire-danger and Total Fire Ban data retain their publication dates instead of being relabelled after midnight. Explicit republication is handled without redating unchanged or 304 responses.
+          - Warning-area geometry participates in alert qualification, and NSW uses the same bushfire filtering policy as the regional feeds.
+          - Failed direct notifications are retained for per-recipient retry with expiry and visible delivery health.
+
+          ## Validation
+
+          The release commit passed all five checks: unit and packaging tests, actual Home Assistant runtime regressions, Python and JavaScript static checks, hassfest, and HACS validation. The Home Assistant test environment includes the matching frontend package.
+
+          Source commit: `c8cfcb39167138e6809a346f2fec181b84558cd2`.
+
+          ## Updating
+
+          Update Australian Fire Watch to v1.0.1 through HACS and restart Home Assistant. Existing v1.0.0 installations retain the integration domain and configuration-entry version.
+
+          ## Safety
+
+          This is supplementary, unofficial software, not a replacement for official emergency channels. Keep official alerts enabled, follow emergency-service instructions, and call Triple Zero (000) in a life-threatening emergency. Never treat missing or stale data as safe.
+          NOTES
+          if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" --json isDraft,isPrerelease,url > "$RUNNER_TEMP/existing-release.json" 2> "$RUNNER_TEMP/release-view-error.txt"; then
+            jq -e '.isDraft == false and .isPrerelease == false' "$RUNNER_TEMP/existing-release.json"
+          else
+            gh release create "$RELEASE_TAG" --repo "$RELEASE_REPO" --target "$RELEASE_SHA" --title "Australian Fire Watch v1.0.1" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
+          fi
+          test "$(gh api "repos/$RELEASE_REPO/git/ref/tags/$RELEASE_TAG" --jq .object.sha)" = "$RELEASE_SHA"
+          gh api "repos/$RELEASE_REPO/releases/latest" > "$RUNNER_TEMP/published-release.json"
+          jq -e --arg tag "$RELEASE_TAG" '.tag_name == $tag and .draft == false and .prerelease == false' "$RUNNER_TEMP/published-release.json"
+          jq -r .html_url "$RUNNER_TEMP/published-release.json" >> "$GITHUB_STEP_SUMMARY"
