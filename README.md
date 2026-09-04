@@ -1,5 +1,7 @@
 # Australian Fire Watch for Home Assistant
 
+☕ [Support Australian Fire Watch on Buy Me a Coffee](https://buymeacoffee.com/hallyaus)
+
 Australian Fire Watch is a HACS-installable Home Assistant integration and
 mobile-first dashboard for bushfire awareness across every Australian state and
 territory. It normalises official incident feeds, ranks nearby warnings, creates
@@ -52,8 +54,8 @@ the UI.
 
 ## Dashboard and card
 
-The integration registers /australian-fire-watch as its sidebar dashboard. The same UI
-is available as a card:
+The integration registers `/australian-fire-watch` as its sidebar dashboard.
+The same UI is available as a card:
 
     type: custom:australian-fire-watch-card
     show_map: true
@@ -127,6 +129,9 @@ or territory source. Unknown never becomes No Rating.
 ## Notifications
 
 Enter one or more fully-qualified notify.* services in the integration options.
+Direct notification delivery, mobile acknowledgement and snooze actions, and
+safe test alerts are built into the integration; a separate automation is not
+required.
 Notifications are raised only for meaningful lifecycle changes such as newly
 qualifying incidents, escalation, de-escalation, leaving the monitored radius,
 or resolution after healthy snapshots.
@@ -135,8 +140,8 @@ Emergency Warning updates cannot be silenced by acknowledgement or snooze.
 Android and iOS notification priorities are derived from the official warning
 level. Test alerts are clearly labelled and never use the critical path.
 
-The included blueprint is:
-blueprints/automation/hallyaus/australian_fire_watch_assigned_alerts.yaml
+An optional blueprint for users who want to own the alert automation is available
+at `blueprints/automation/hallyaus/australian_fire_watch_assigned_alerts.yaml`.
 
 Its event and mobile-action names use the `AUSTRALIAN_FIRE_WATCH_*` prefix.
 

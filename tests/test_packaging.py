@@ -148,6 +148,8 @@ class PackagingTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("Home Assistant's native map card", readme)
         self.assertIn("show_map: false", readme)
+        self.assertIn("https://buymeacoffee.com/hallyaus", readme)
+        self.assertIn("https://buymeacoffee.com/hallyaus", panel)
 
     def test_translations_are_valid_json(self) -> None:
         json_files = [COMPONENT / "manifest.json", COMPONENT / "strings.json"]

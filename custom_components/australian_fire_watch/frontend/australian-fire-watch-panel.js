@@ -1298,6 +1298,8 @@ const STYLES = `
   .source-attribution { margin: 10px 0 0; color: var(--fw-muted); font-size: .72rem; line-height: 1.35; }
   .source-attribution a { color: inherit; }
   .disclaimer { margin: 13px 0 0; padding: 11px; border-left: 4px solid #facc15; background: rgba(250,204,21,.09); font-size: .88rem; }
+  .support-link { margin: 12px 0 0; color: var(--fw-muted); font-size: .76rem; text-align: center; }
+  .support-link a { color: inherit; font-weight: 700; }
 
   .notice { margin: 0 0 12px; padding: 11px 13px; border: 1px solid var(--fw-border); border-radius: 12px; background: #1e3a5f; color: white; }
   .notice.error { background: #7f1d1d; }
@@ -2343,6 +2345,7 @@ const renderHealth = (model, busy) => {
           </div>
         </details>
         <p class="disclaimer"><strong>Supplementary information only.</strong> Do not rely on Home Assistant as your only warning channel. Follow ${escapeHtml(model.feed.sourceName)}, your official emergency app, emergency services, and local radio. Warnings may not precede a fast-moving fire. In an emergency, call Triple Zero (000).</p>
+        <p class="support-link">Like Australian Fire Watch? <a href="https://buymeacoffee.com/hallyaus" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>.</p>
       </div>
     </details>
   `;
