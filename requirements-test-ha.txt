@@ -1,3 +1,5 @@
 # The pinned test harness declares its exact compatible Home Assistant version.
 # Let that dependency supply Home Assistant rather than maintaining a conflicting pin.
 pytest-homeassistant-custom-component==0.13.363
+# Match Home Assistant 2026.9.0 for real frontend setup, reload and unload tests.
+home-assistant-frontend==20260826.4

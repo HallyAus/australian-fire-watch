@@ -146,13 +146,19 @@ class OfficialFeedClient:
                     new_etag = response.headers.get("ETag")
                     modified_header = response.headers.get("Last-Modified")
                     modified = _http_datetime(modified_header)
+                    # A publisher can reissue identical relative-day values on
+                    # a new date. Recognise that publication without redating
+                    # unchanged responses that have no new publisher timestamp.
+                    publication_changed = (
+                        modified is not None and modified != state.last_modified
+                    )
                     changed = body != state.body
                     state.body = body
                     state.etag = new_etag
                     state.last_modified_header = modified_header
                     state.last_modified = modified
                     state.last_success = now
-                    if changed or state.last_change is None:
+                    if changed or publication_changed or state.last_change is None:
                         state.last_change = modified or now
                     state.last_error = None
                     state.failures = 0
