@@ -1,5 +1,10 @@
 # Australian Fire Watch status
 
+## 0.2.1 national release
+
+- Prevented YAML import from racing an existing pre-v2 config-entry migration
+  and creating a duplicate monitored location during upgrade.
+
 ## 0.2.0 national release candidate
 
 - HACS install and technical nsw_fire_watch domain remain backward compatible.

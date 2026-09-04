@@ -6,11 +6,13 @@ entities, services, blueprints, and HACS upgrades keep working.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import timedelta
+from typing import Any
 
 DOMAIN = "nsw_fire_watch"
 NAME = "Australian Fire Watch"
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 CONFIG_ENTRY_VERSION = 2
 
 PLATFORMS = ["sensor", "binary_sensor", "geo_location"]
@@ -41,6 +43,16 @@ DEFAULT_ADVICE_RADIUS_KM = 20.0
 DEFAULT_UNCLASSIFIED_RADIUS_KM = 10.0
 DEFAULT_STALE_AFTER_MINUTES = 45
 DEFAULT_ENABLE_BOM = True
+
+
+def config_entry_unique_id(data: Mapping[str, Any]) -> str:
+    """Return the stable identity used by UI, YAML and migrated entries."""
+    jurisdiction = str(data.get(CONF_JURISDICTION, DEFAULT_JURISDICTION)).upper()
+    district = (
+        str(data.get(CONF_DISTRICT, DEFAULT_DISTRICT)) if jurisdiction == "NSW" else ""
+    )
+    return f"{data.get(CONF_ZONE, DEFAULT_ZONE)}|{jurisdiction}|{district}".casefold()
+
 
 MIN_UPDATE_INTERVAL = timedelta(minutes=5)
 REQUEST_TIMEOUT_SECONDS = 20

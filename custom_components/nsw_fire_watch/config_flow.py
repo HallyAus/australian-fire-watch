@@ -40,6 +40,7 @@ from .const import (
     DEFAULT_ZONE,
     DOMAIN,
     FIRE_DANGER_DISTRICTS,
+    config_entry_unique_id,
 )
 from .jurisdictions import JURISDICTION_OPTIONS
 
@@ -209,10 +210,7 @@ class FireWatchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if _valid(user_input):
                 data = _prepare(user_input)
-                unique = (
-                    f"{data[CONF_ZONE]}|{data[CONF_JURISDICTION]}|"
-                    f"{data.get(CONF_DISTRICT, '')}"
-                ).casefold()
+                unique = config_entry_unique_id(data)
                 await self.async_set_unique_id(unique)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=data[CONF_NAME], data=data)
@@ -223,9 +221,24 @@ class FireWatchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input: dict[str, Any]) -> FlowResult:
         data = _prepare(user_input)
-        unique = (
-            f"{data[CONF_ZONE]}|{data[CONF_JURISDICTION]}|{data.get(CONF_DISTRICT, '')}"
-        ).casefold()
+        unique = config_entry_unique_id(data)
+
+        # A pre-v2 entry has no unique ID until Home Assistant migrates it. YAML
+        # import can race that migration during startup, so also compare the
+        # identity derived from entry data before creating anything new.
+        for entry in self._async_current_entries():
+            if (
+                entry.unique_id == unique
+                or config_entry_unique_id(entry.data) == unique
+            ):
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    data=data,
+                    unique_id=unique,
+                    version=CONFIG_ENTRY_VERSION,
+                )
+                return self.async_abort(reason="already_configured")
+
         await self.async_set_unique_id(unique)
         self._abort_if_unique_id_configured(updates=data)
         return self.async_create_entry(title=data[CONF_NAME], data=data)

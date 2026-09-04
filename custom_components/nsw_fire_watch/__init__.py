@@ -61,6 +61,7 @@ from .const import (
     SERVICE_SNOOZE,
     SERVICE_TEST_ALERT,
     VERSION,
+    config_entry_unique_id,
 )
 from .coordinator import FireWatchCoordinator
 
@@ -192,12 +193,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
     data = dict(entry.data)
     data.setdefault(CONF_JURISDICTION, DEFAULT_JURISDICTION)
-    district = data.get(CONF_DISTRICT, DEFAULT_DISTRICT)
-    unique_id = f"{data.get(CONF_ZONE, DEFAULT_ZONE)}|NSW|{district}".casefold()
     hass.config_entries.async_update_entry(
         entry,
         data=data,
-        unique_id=unique_id,
+        unique_id=config_entry_unique_id(data),
         version=CONFIG_ENTRY_VERSION,
     )
     return True
