@@ -1,3 +1,5 @@
-# Keep Home Assistant aligned with the pinned test harness dependency.
+# This harness pins homeassistant==2026.9.0; keep the runtime aligned.
 pytest-homeassistant-custom-component==0.13.363
-homeassistant==2026.9.1
+homeassistant==2026.9.0
+# Actual frontend setup/reload tests need the matching frontend distribution.
+home-assistant-frontend==20260826.4
