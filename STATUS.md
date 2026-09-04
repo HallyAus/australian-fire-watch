@@ -1,22 +1,16 @@
 # Australian Fire Watch status
 
-## 0.2.1 national release
+## 1.0.0 national launch
 
-- Prevented YAML import from racing an existing pre-v2 config-entry migration
-  and creating a duplicate monitored location during upgrade.
-
-## 0.2.0 national release candidate
-
-- HACS install and technical nsw_fire_watch domain remain backward compatible.
+- The public repository is `HallyAus/australian-fire-watch` and the Home
+  Assistant domain is `australian_fire_watch`.
 - Config flow supports ACT, NSW, NT, Queensland, South Australia, Tasmania,
   Victoria, and Western Australia.
 - Jurisdiction-specific CAP, GeoJSON, JSON, KML, and GeoRSS adapters normalise
   official incident records into one safety model.
 - The integration-owned sidebar dashboard, Lovelace card, and dashboard strategy
-  remain bundled with the integration.
-- The interim MapLibre/OpenFreeMap renderer and vendor assets have been removed.
-  The dashboard now creates Home Assistant's native map card.
-- Existing NSW RFS cross-checking and NSW/BOM fire-danger enrichment remain.
+  ship inside the integration and use Home Assistant's native map card.
+- NSW RFS cross-checking and NSW/BOM fire-danger enrichment are included.
 - Non-NSW fire-danger enrichment is explicitly unavailable rather than inferred.
 - Malformed, stale, or missing data never becomes a safe state.
 

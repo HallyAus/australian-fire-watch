@@ -8,7 +8,7 @@ blueprint:
     cannot be snoozed. This is supplementary to official emergency warnings.
   domain: automation
   author: HallyAus contributors
-  source_url: https://github.com/HallyAus/nsw-fire-watch/blob/main/blueprints/automation/hallyaus/nsw_fire_watch_assigned_alerts.yaml
+  source_url: https://github.com/HallyAus/australian-fire-watch/blob/main/blueprints/automation/hallyaus/australian_fire_watch_assigned_alerts.yaml
   homeassistant:
     min_version: 2025.12.0
   input:
@@ -30,7 +30,7 @@ blueprint:
           description: >-
             Relative Home Assistant path opened when the notification is tapped.
             A relative path follows the local or remote server selected by the app.
-          default: /nsw-fire-watch
+          default: /australian-fire-watch
           selector:
             text:
         additional_actions:
@@ -158,7 +158,7 @@ blueprint:
 
 triggers:
   - trigger: event
-    event_type: nsw_fire_watch_alert
+    event_type: australian_fire_watch_alert
 
 variables:
   assigned_location: !input assigned_location
@@ -258,7 +258,7 @@ variables:
   notification_tag: >-
     {{ alert_data.get(
       'notification_tag',
-      'nsw-fire-watch-' ~ entry_id ~ '-' ~ incident_id
+      'australian-fire-watch-' ~ entry_id ~ '-' ~ incident_id
     ) }}
   lifecycle_label: >-
     {% if is_danger and lifecycle == 'resolved' %}
@@ -334,9 +334,9 @@ variables:
       and delivery_priority in ['time_sensitive', 'critical']
     ) }}
   action_ack: >-
-    {{ 'NSW_FIRE_WATCH_ACK|' ~ entry_id ~ '|' ~ incident_id }}
+    {{ 'AUSTRALIAN_FIRE_WATCH_ACK|' ~ entry_id ~ '|' ~ incident_id }}
   action_snooze: >-
-    {{ 'NSW_FIRE_WATCH_SNOOZE|' ~ entry_id ~ '|' ~ incident_id ~ '|'
+    {{ 'AUSTRALIAN_FIRE_WATCH_SNOOZE|' ~ entry_id ~ '|' ~ incident_id ~ '|'
        ~ (snooze_minutes | int) }}
   notification_actions: >-
     {% set official = {
@@ -414,7 +414,7 @@ actions:
     message: "{{ alert_message }}"
     data:
       tag: "{{ notification_tag ~ '-resolved' if lifecycle == 'resolved' else notification_tag }}"
-      group: nsw_fire_watch
+      group: australian_fire_watch
       url: "{{ dashboard_path }}"
       clickAction: "{{ dashboard_path }}"
       notification_icon: mdi:fire-alert

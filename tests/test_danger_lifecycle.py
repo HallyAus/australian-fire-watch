@@ -7,15 +7,15 @@ from pathlib import Path
 import sys
 from types import ModuleType
 
-_PACKAGE = "custom_components.nsw_fire_watch"
+_PACKAGE = "custom_components.australian_fire_watch"
 if _PACKAGE not in sys.modules:
     package = ModuleType(_PACKAGE)
     package.__path__ = [
-        str(Path(__file__).parents[1] / "custom_components" / "nsw_fire_watch")
+        str(Path(__file__).parents[1] / "custom_components" / "australian_fire_watch")
     ]
     sys.modules[_PACKAGE] = package
 
-from custom_components.nsw_fire_watch.model import (  # noqa: E402
+from custom_components.australian_fire_watch.model import (  # noqa: E402
     danger_notification_priority,
     track_danger_lifecycle,
 )

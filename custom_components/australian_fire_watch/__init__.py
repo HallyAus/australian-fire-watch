@@ -36,7 +36,6 @@ from .const import (
     CONF_WATCH_RADIUS,
     CONF_WEATHER_ENTITY,
     CONF_ZONE,
-    CONFIG_ENTRY_VERSION,
     DEFAULT_ADVICE_RADIUS_KM,
     DEFAULT_DISTRICT,
     DEFAULT_ENABLE_BOM,
@@ -61,7 +60,6 @@ from .const import (
     SERVICE_SNOOZE,
     SERVICE_TEST_ALERT,
     VERSION,
-    config_entry_unique_id,
 )
 from .coordinator import FireWatchCoordinator
 
@@ -184,21 +182,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                     DOMAIN, context={"source": "import"}, data=dict(item)
                 )
             )
-    return True
-
-
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Upgrade pre-national entries in place as New South Wales entries."""
-    if entry.version >= CONFIG_ENTRY_VERSION:
-        return True
-    data = dict(entry.data)
-    data.setdefault(CONF_JURISDICTION, DEFAULT_JURISDICTION)
-    hass.config_entries.async_update_entry(
-        entry,
-        data=data,
-        unique_id=config_entry_unique_id(data),
-        version=CONFIG_ENTRY_VERSION,
-    )
     return True
 
 
@@ -353,16 +336,16 @@ def _register_mobile_actions(hass: HomeAssistant) -> None:
         action = str(event.data.get("action", ""))
         parts = action.split("|")
         if len(parts) < 3 or parts[0] not in {
-            "NSW_FIRE_WATCH_ACK",
-            "NSW_FIRE_WATCH_SNOOZE",
+            "AUSTRALIAN_FIRE_WATCH_ACK",
+            "AUSTRALIAN_FIRE_WATCH_SNOOZE",
         }:
             return
         coordinator = data[DATA_ENTRIES].get(parts[1])
         if coordinator is None:
             return
-        if parts[0] == "NSW_FIRE_WATCH_ACK" and len(parts) == 3:
+        if parts[0] == "AUSTRALIAN_FIRE_WATCH_ACK" and len(parts) == 3:
             hass.async_create_task(coordinator.async_acknowledge(parts[2]))
-        elif parts[0] == "NSW_FIRE_WATCH_SNOOZE" and len(parts) == 4:
+        elif parts[0] == "AUSTRALIAN_FIRE_WATCH_SNOOZE" and len(parts) == 4:
             try:
                 minutes = int(parts[3])
             except ValueError:

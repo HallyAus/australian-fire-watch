@@ -2,14 +2,14 @@
  * Australian Fire Watch for Home Assistant
  *
  * Dependency-free frontend bundle. It registers:
- *   - <nsw-fire-watch-panel> for the integration-owned sidebar panel
- *   - <nsw-fire-watch-card> for Lovelace dashboards
- *   - custom:nsw-fire-watch as a Home Assistant 2026.5+ Community dashboard
+ *   - <australian-fire-watch-panel> for the integration-owned sidebar panel
+ *   - <australian-fire-watch-card> for Lovelace dashboards
+ *   - custom:australian-fire-watch as a Home Assistant 2026.5+ Community dashboard
  *
  * Safety rule: absent, unknown, or stale data is never described as safe.
  */
 
-const DOMAIN = "nsw_fire_watch";
+const DOMAIN = "australian_fire_watch";
 const DEFAULT_RFS_URL =
   "https://www.rfs.nsw.gov.au/fire-information/fires-near-me";
 const DEFAULT_RATINGS_URL =
@@ -23,7 +23,7 @@ const BOM_ATTRIBUTION_IMAGE =
   "data:image/png;base64,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";
 const DEFAULT_GEO_SOURCE = "nsw_rural_fire_service_feed";
 const MAP_DEFAULT_ZOOM = 11;
-const FIRE_WATCH_CARD_TAG = "nsw-fire-watch-card";
+const FIRE_WATCH_CARD_TAG = "australian-fire-watch-card";
 const FIRE_WATCH_CARD_TYPE = `custom:${FIRE_WATCH_CARD_TAG}`;
 const FIRE_WATCH_RECOVERY_DELAYS = Object.freeze([
   0,
@@ -35,7 +35,7 @@ const FIRE_WATCH_RECOVERY_DELAYS = Object.freeze([
   4000,
 ]);
 const FIRE_WATCH_RECOVERY_FLAG = Symbol.for(
-  "nsw-fire-watch-card.recovery-scheduled",
+  "australian-fire-watch-card.recovery-scheduled",
 );
 const fireWatchRecoveryAttempts = new WeakSet();
 
@@ -440,7 +440,7 @@ const discoverSummaryEntity = (hass, configuredEntity) => {
         (isPresent(attributes.entry_id) &&
           (Array.isArray(attributes.incidents) ||
             Array.isArray(attributes.active_incidents))) ||
-        entityId.includes("nsw_fire_watch")
+        entityId.includes("australian_fire_watch")
       );
     })
     .sort(([leftId, left], [rightId, right]) => {
@@ -2075,7 +2075,7 @@ const renderCompact = (model, title, showMap = false) => {
             : ""
         }
         <nav class="compact-actions" aria-label="Fire Watch links">
-          <a class="button-link primary" href="/nsw-fire-watch">Open command centre</a>
+          <a class="button-link primary" href="/australian-fire-watch">Open command centre</a>
           <a class="button-link" href="${escapeHtml(
             model.feed.officialUrl,
           )}" target="_blank" rel="noopener noreferrer">Official source ${icon(
@@ -2336,7 +2336,7 @@ const renderHealth = (model, busy) => {
           <summary>Test assigned alert delivery</summary>
           <p class="subtle small">Tests are clearly labelled and use your configured alert automation. They do not create an official warning.</p>
           <div class="test-controls">
-            <a class="button-link" href="/config/integrations/integration/nsw_fire_watch">Manage alert assignment</a>
+            <a class="button-link" href="/config/integrations/integration/australian_fire_watch">Manage alert assignment</a>
             <button class="button" type="button" data-action="test-alert" data-level="advice" ${busy ? "disabled" : ""}>Test Advice</button>
             <button class="button" type="button" data-action="test-alert" data-level="watch_and_act" ${busy ? "disabled" : ""}>Test Watch and Act</button>
             <button class="button" type="button" data-action="test-alert" data-level="emergency_warning" ${busy ? "disabled" : ""}>Test Emergency Warning</button>
@@ -2348,7 +2348,7 @@ const renderHealth = (model, busy) => {
   `;
 };
 
-class NSWFireWatchBase extends HTMLElement {
+class AustralianFireWatchBase extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -2465,7 +2465,7 @@ class NSWFireWatchBase extends HTMLElement {
               <span class="eyebrow">Australian Fire Watch</span>
               <h1 id="setup-heading">Finish integration setup</h1>
               <p>${escapeHtml(setupMessage)}</p>
-              <a class="button-link primary" href="/config/integrations/integration/nsw_fire_watch">Open integration settings</a>
+              <a class="button-link primary" href="/config/integrations/integration/australian_fire_watch">Open integration settings</a>
               <p class="compact-disclaimer"><strong>Missing dashboard data does not mean conditions are safe.</strong></p>
             </section>
           </main>
@@ -2484,8 +2484,8 @@ class NSWFireWatchBase extends HTMLElement {
                 ? "No Australian Fire Watch summary entity is available yet. Add or finish configuring the integration, then reload this page."
                 : "Connecting to Home Assistant…"
             }</p>
-            <p class="subtle">If you have multiple monitored locations, set the card’s <code class="setup-code">entity: sensor.nsw_fire_watch_…</code> option.</p>
-            <a class="button-link primary" href="/config/integrations/integration/nsw_fire_watch">Configure Australian Fire Watch</a>
+            <p class="subtle">If you have multiple monitored locations, set the card’s <code class="setup-code">entity: sensor.australian_fire_watch_…</code> option.</p>
+            <a class="button-link primary" href="/config/integrations/integration/australian_fire_watch">Configure Australian Fire Watch</a>
             <p class="disclaimer"><strong>Do not treat missing dashboard data as safe.</strong> Continue to use your state or territory’s official warnings and emergency app.</p>
           </section>
         </main>
@@ -2692,11 +2692,11 @@ class NSWFireWatchBase extends HTMLElement {
   }
 }
 
-class NSWFireWatchPanel extends NSWFireWatchBase {}
+class AustralianFireWatchPanel extends AustralianFireWatchBase {}
 
-class NSWFireWatchCard extends NSWFireWatchBase {
+class AustralianFireWatchCard extends AustralianFireWatchBase {
   static getConfigElement() {
-    return document.createElement("nsw-fire-watch-card-editor");
+    return document.createElement("australian-fire-watch-card-editor");
   }
 
   static getStubConfig(hass) {
@@ -2705,7 +2705,7 @@ class NSWFireWatchCard extends NSWFireWatchBase {
   }
 }
 
-class NSWFireWatchCardEditor extends HTMLElement {
+class AustralianFireWatchCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -2728,7 +2728,7 @@ class NSWFireWatchCardEditor extends HTMLElement {
       ? Object.entries(this._hass.states)
           .filter(([entityId, state]) =>
             entityId.startsWith("sensor.") &&
-            (state.attributes?.integration === DOMAIN || entityId.includes("nsw_fire_watch")),
+            (state.attributes?.integration === DOMAIN || entityId.includes("australian_fire_watch")),
           )
           .map(([entityId, state]) => [
             entityId,
@@ -2802,7 +2802,7 @@ class NSWFireWatchCardEditor extends HTMLElement {
   }
 }
 
-class NSWFireWatchDashboardStrategy extends HTMLElement {
+class AustralianFireWatchDashboardStrategy extends HTMLElement {
   static noEditor = true;
 
   static getCreateSuggestions(_hass) {
@@ -2818,7 +2818,7 @@ class NSWFireWatchDashboardStrategy extends HTMLElement {
       entityIdForState(hass, discoverSummaryEntity(hass)),
     );
     const cardConfig = {
-      type: "custom:nsw-fire-watch-card",
+      type: "custom:australian-fire-watch-card",
       ...(entity ? { entity } : {}),
       title: firstPresent(config.card_title, "Australian Fire Watch"),
       show_map: config.show_map !== false,
@@ -2869,7 +2869,7 @@ const isMissingFireWatchElementError = (element) => {
   const config = element._config || element.config || {};
   const rawMessage = config.message ?? config.error ?? element.message;
   const message = rawMessage instanceof Error ? rawMessage.message : rawMessage;
-  return /^custom element (?:doesn't exist|not found): nsw-fire-watch-card\.?$/i.test(
+  return /^custom element (?:doesn't exist|not found): australian-fire-watch-card\.?$/i.test(
     String(message || "").trim(),
   );
 };
@@ -2936,33 +2936,33 @@ const defineElement = (name, constructor) => {
   if (!customElements.get(name)) customElements.define(name, constructor);
 };
 
-defineElement("nsw-fire-watch-panel", NSWFireWatchPanel);
-defineElement(FIRE_WATCH_CARD_TAG, NSWFireWatchCard);
+defineElement("australian-fire-watch-panel", AustralianFireWatchPanel);
+defineElement(FIRE_WATCH_CARD_TAG, AustralianFireWatchCard);
 scheduleFireWatchCardRecovery();
-defineElement("nsw-fire-watch-card-editor", NSWFireWatchCardEditor);
-defineElement("ll-strategy-dashboard-nsw-fire-watch", NSWFireWatchDashboardStrategy);
+defineElement("australian-fire-watch-card-editor", AustralianFireWatchCardEditor);
+defineElement("ll-strategy-dashboard-australian-fire-watch", AustralianFireWatchDashboardStrategy);
 
 window.customCards = window.customCards || [];
-if (!window.customCards.some((card) => card.type === "nsw-fire-watch-card")) {
+if (!window.customCards.some((card) => card.type === "australian-fire-watch-card")) {
   window.customCards.push({
-    type: "nsw-fire-watch-card",
+    type: "australian-fire-watch-card",
     name: "Australian Fire Watch",
     description:
       "Mobile-first Australian fire incident, readiness, and alert dashboard.",
     preview: true,
-    documentationURL: "https://github.com/hallyaus/nsw-fire-watch",
+    documentationURL: "https://github.com/hallyaus/australian-fire-watch",
   });
 }
 
 window.customStrategies = window.customStrategies || [];
-if (!window.customStrategies.some((strategy) => strategy.type === "nsw-fire-watch")) {
+if (!window.customStrategies.some((strategy) => strategy.type === "australian-fire-watch")) {
   window.customStrategies.push({
-    type: "nsw-fire-watch",
+    type: "australian-fire-watch",
     strategyType: "dashboard",
     name: "Australian Fire Watch",
     description:
       "A severity-first dashboard for official Australian fire incidents and assigned alerts.",
-    documentationURL: "https://github.com/hallyaus/nsw-fire-watch",
+    documentationURL: "https://github.com/hallyaus/australian-fire-watch",
   });
 }
 

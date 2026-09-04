@@ -1,11 +1,15 @@
-# NSW Fire Watch contributor guide
+# Australian Fire Watch contributor guide
 
-This repository is a HACS-installable Home Assistant integration for NSW bush-fire awareness. It is supplementary to official emergency channels and must never describe missing or stale data as safe.
+This repository is a HACS-installable Home Assistant integration for Australian
+bushfire awareness. It is supplementary to official emergency channels and must
+never describe missing or stale data as safe.
 
 ## Architecture
 
-- `custom_components/nsw_fire_watch/`: config flow, official NSW RFS/BOM feed coordinators, normalized models, HA entities/events/services, and the bundled frontend.
-- `custom_components/nsw_fire_watch/frontend/`: prebuilt plain JavaScript loaded directly by Home Assistant; no runtime package manager.
+- `custom_components/australian_fire_watch/`: config flow, jurisdiction adapters,
+  NSW RFS/BOM enrichment, normalized models, HA entities/events/services, and
+  the bundled frontend.
+- `custom_components/australian_fire_watch/frontend/`: prebuilt plain JavaScript loaded directly by Home Assistant; no runtime package manager.
 - `blueprints/`: optional user-owned alert automations.
 - `tests/`: deterministic unit tests. Keep feed parsing and ranking logic pure where possible.
 

@@ -5,9 +5,7 @@ mobile-first dashboard for bushfire awareness across every Australian state and
 territory. It normalises official incident feeds, ranks nearby warnings, creates
 native geo-location entities, and can send lifecycle-aware notifications.
 
-The integration domain remains nsw_fire_watch so existing NSW Fire Watch
-installations upgrade without losing entity IDs, services, automations, or
-acknowledgement history.
+The Home Assistant integration domain is `australian_fire_watch`.
 
 > **Safety**
 >
@@ -29,15 +27,14 @@ acknowledgement history.
 - A bundled Home Assistant dashboard strategy.
 - Home Assistant's native map card, using the monitored zone as the focus and
   incident entities as non-focusing overlays.
-- NSW fire-danger, Total Fire Ban, FBI, and BOM warning enrichment retained for
-  existing users.
+- NSW fire-danger, Total Fire Ban, FBI, and BOM warning enrichment.
 
 ## Install with HACS
 
 Until the repository is listed in HACS defaults:
 
 1. Open **HACS → Integrations → Custom repositories**.
-2. Add https://github.com/HallyAus/nsw-fire-watch as an **Integration**.
+2. Add https://github.com/HallyAus/australian-fire-watch as an **Integration**.
 3. Search for **Australian Fire Watch**, download it, and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration**.
 5. Select **Australian Fire Watch**, choose the state or territory containing
@@ -49,39 +46,39 @@ or dashboard YAML is required.
 
 ### Manual installation
 
-Copy custom_components/nsw_fire_watch to the same path under the Home Assistant
-config directory, restart Home Assistant, then add the integration in the UI.
+Copy `custom_components/australian_fire_watch` to the same path under the Home
+Assistant config directory, restart Home Assistant, then add the integration in
+the UI.
 
 ## Dashboard and card
 
-The integration registers /nsw-fire-watch as its sidebar dashboard. The same UI
+The integration registers /australian-fire-watch as its sidebar dashboard. The same UI
 is available as a card:
 
-    type: custom:nsw-fire-watch-card
+    type: custom:australian-fire-watch-card
     show_map: true
     show_readiness: true
 
 For a compact Home view:
 
-    type: custom:nsw-fire-watch-card
+    type: custom:australian-fire-watch-card
     compact: true
     show_map: false
     show_readiness: false
 
 If more than one location is configured, set the summary sensor explicitly:
 
-    type: custom:nsw-fire-watch-card
-    entity: sensor.nsw_fire_watch_home_status
+    type: custom:australian-fire-watch-card
+    entity: sensor.australian_fire_watch_home_status
 
 The map is Home Assistant's standard map card. It uses default_zoom: 11,
 auto_fit: false, and fit_zones: false; this avoids a distant statewide incident
 pulling the local view away from the monitored zone.
 
-The bundled dashboard strategy remains available under its backward-compatible
-name:
+The bundled dashboard strategy is also available:
 
     strategy:
-      type: custom:nsw-fire-watch
+      type: custom:australian-fire-watch
 
 ## Jurisdictions and official data
 
@@ -139,16 +136,15 @@ Android and iOS notification priorities are derived from the official warning
 level. Test alerts are clearly labelled and never use the critical path.
 
 The included blueprint is:
-blueprints/automation/hallyaus/nsw_fire_watch_assigned_alerts.yaml
+blueprints/automation/hallyaus/australian_fire_watch_assigned_alerts.yaml
 
-Its event and action names retain the NSW_FIRE_WATCH_* prefix for upgrade
-compatibility.
+Its event and mobile-action names use the `AUSTRALIAN_FIRE_WATCH_*` prefix.
 
 ## Configuration
 
-UI setup is recommended. A backward-compatible YAML import is also supported:
+UI setup is recommended. YAML import is also supported:
 
-    nsw_fire_watch:
+    australian_fire_watch:
       name: Home
       zone: zone.home
       jurisdiction: NSW
@@ -172,9 +168,6 @@ automatically disabled regardless of the checkbox.
 4. Disable old real-time RFS alert automations to prevent duplicate notices.
 5. Keep old entities for comparison until at least one healthy refresh cycle.
 6. Remove legacy dashboards and integrations only after the new path is proven.
-
-Existing NSW Fire Watch config entries are migrated to jurisdiction: NSW
-automatically. The domain and entity namespace do not change.
 
 ## Recovery and rollback
 

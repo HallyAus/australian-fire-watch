@@ -223,9 +223,8 @@ class FireWatchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         data = _prepare(user_input)
         unique = config_entry_unique_id(data)
 
-        # A pre-v2 entry has no unique ID until Home Assistant migrates it. YAML
-        # import can race that migration during startup, so also compare the
-        # identity derived from entry data before creating anything new.
+        # YAML import runs at every startup. Compare the identity derived from
+        # entry data as well as its stored unique ID so the import is idempotent.
         for entry in self._async_current_entries():
             if (
                 entry.unique_id == unique

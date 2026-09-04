@@ -9,21 +9,21 @@ from pathlib import Path
 import sys
 from types import ModuleType
 
-_PACKAGE = "custom_components.nsw_fire_watch"
+_PACKAGE = "custom_components.australian_fire_watch"
 if _PACKAGE not in sys.modules:
     package = ModuleType(_PACKAGE)
     package.__path__ = [
-        str(Path(__file__).parents[1] / "custom_components" / "nsw_fire_watch")
+        str(Path(__file__).parents[1] / "custom_components" / "australian_fire_watch")
     ]
     sys.modules[_PACKAGE] = package
 
-from custom_components.nsw_fire_watch.parsers import (  # noqa: E402
+from custom_components.australian_fire_watch.parsers import (  # noqa: E402
     FeedParseError,
     parse_cap,
     parse_geojson,
     parse_rfs_fire_danger,
 )
-from custom_components.nsw_fire_watch.regional_parsers import (  # noqa: E402
+from custom_components.australian_fire_watch.regional_parsers import (  # noqa: E402
     fire_incidents_only,
     parse_georss,
     parse_nt_json,
@@ -32,7 +32,7 @@ from custom_components.nsw_fire_watch.regional_parsers import (  # noqa: E402
     parse_tas_kml,
     parse_vic_geojson,
 )
-from custom_components.nsw_fire_watch.jurisdictions import (  # noqa: E402
+from custom_components.australian_fire_watch.jurisdictions import (  # noqa: E402
     JURISDICTIONS,
 )
 

@@ -1,8 +1,4 @@
-"""Constants for Australian Fire Watch.
-
-The integration domain remains ``nsw_fire_watch`` so existing installations,
-entities, services, blueprints, and HACS upgrades keep working.
-"""
+"""Constants for Australian Fire Watch."""
 
 from __future__ import annotations
 
@@ -10,10 +6,10 @@ from collections.abc import Mapping
 from datetime import timedelta
 from typing import Any
 
-DOMAIN = "nsw_fire_watch"
+DOMAIN = "australian_fire_watch"
 NAME = "Australian Fire Watch"
-VERSION = "0.2.1"
-CONFIG_ENTRY_VERSION = 2
+VERSION = "1.0.0"
+CONFIG_ENTRY_VERSION = 1
 
 PLATFORMS = ["sensor", "binary_sensor", "geo_location"]
 
@@ -46,7 +42,7 @@ DEFAULT_ENABLE_BOM = True
 
 
 def config_entry_unique_id(data: Mapping[str, Any]) -> str:
-    """Return the stable identity used by UI, YAML and migrated entries."""
+    """Return the stable identity used by UI and YAML-configured entries."""
     jurisdiction = str(data.get(CONF_JURISDICTION, DEFAULT_JURISDICTION)).upper()
     district = (
         str(data.get(CONF_DISTRICT, DEFAULT_DISTRICT)) if jurisdiction == "NSW" else ""
@@ -76,17 +72,17 @@ ATTRIBUTION_RFS = (
 )
 ATTRIBUTION_BOM = "Australian Government Bureau of Meteorology"
 
-EVENT_ALERT = "nsw_fire_watch_alert"
+EVENT_ALERT = "australian_fire_watch_alert"
 SERVICE_ACKNOWLEDGE = "acknowledge"
 SERVICE_SNOOZE = "snooze"
 SERVICE_TEST_ALERT = "test_alert"
 
-PANEL_SLUG = "nsw-fire-watch"
+PANEL_SLUG = "australian-fire-watch"
 PANEL_TITLE = "Australian Fire Watch"
 PANEL_ICON = "mdi:fire-alert"
-FRONTEND_URL_PATH = "/api/nsw_fire_watch/frontend"
-PANEL_JS_FILE = "nsw-fire-watch-panel.js"
-PANEL_ELEMENT = "nsw-fire-watch-panel"
+FRONTEND_URL_PATH = "/api/australian_fire_watch/frontend"
+PANEL_JS_FILE = "australian-fire-watch-panel.js"
+PANEL_ELEMENT = "australian-fire-watch-panel"
 
 FIRE_DANGER_DISTRICTS = (
     "Far North Coast",

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NSW Fire Watch visual fixture</title>
+    <title>Australian Fire Watch visual fixture</title>
     <style>
       :root {
         color-scheme: dark;
@@ -53,18 +53,18 @@
         .desktop-preview { grid-column: auto; }
       }
     </style>
-    <script defer src="../custom_components/nsw_fire_watch/frontend/nsw-fire-watch-panel.js?fixture=mobile-redesign"></script>
+    <script defer src="../custom_components/australian_fire_watch/frontend/australian-fire-watch-panel.js?fixture=mobile-redesign"></script>
     <script defer>
       window.addEventListener("DOMContentLoaded", () => {
         const minutesAgo = (minutes) =>
           new Date(Date.now() - minutes * 60 * 1000).toISOString();
 
         const summary = {
-          entity_id: "sensor.fixture_nsw_fire_watch",
+          entity_id: "sensor.fixture_australian_fire_watch",
           state: "incident_nearby",
           last_updated: minutesAgo(2),
           attributes: {
-            integration: "nsw_fire_watch",
+            integration: "australian_fire_watch",
             friendly_name: "Fixture Home Fire Watch",
             entry_id: "fixture-entry",
             location_name: "Fixture Home",
@@ -186,7 +186,7 @@
               last_successful_update: minutesAgo(2),
               source_name: "NSW Rural Fire Service",
               official_url: "https://www.rfs.nsw.gov.au/fire-information/fires-near-me",
-              geo_location_source: "nsw_fire_watch"
+              geo_location_source: "australian_fire_watch"
             }
           }
         };
@@ -194,7 +194,7 @@
         const hass = {
           config: { latitude: -33.30, longitude: 151.32 },
           states: {
-            "sensor.fixture_nsw_fire_watch": summary,
+            "sensor.fixture_australian_fire_watch": summary,
             "input_boolean.fixture_fire_plan": {
               state: "on",
               attributes: { friendly_name: "Fire plan reviewed" }
@@ -227,29 +227,29 @@
         });
 
         const mount = (id, config) => {
-          const card = document.createElement("nsw-fire-watch-card");
+          const card = document.createElement("australian-fire-watch-card");
           card.setConfig(config);
           card.hass = hass;
           document.getElementById(id).append(card);
         };
 
         mount("compact-fixture", {
-          entity: "sensor.fixture_nsw_fire_watch",
-          title: "NSW Fire Watch",
+          entity: "sensor.fixture_australian_fire_watch",
+          title: "Australian Fire Watch",
           compact: true,
           show_map: true
         });
         mount("mobile-command-fixture", {
-          entity: "sensor.fixture_nsw_fire_watch",
-          title: "NSW Fire Watch",
+          entity: "sensor.fixture_australian_fire_watch",
+          title: "Australian Fire Watch",
           compact: false,
           show_map: true,
           show_readiness: true,
           max_incidents: 10
         });
         mount("desktop-command-fixture", {
-          entity: "sensor.fixture_nsw_fire_watch",
-          title: "NSW Fire Watch",
+          entity: "sensor.fixture_australian_fire_watch",
+          title: "Australian Fire Watch",
           compact: false,
           show_map: true,
           show_readiness: true,
@@ -260,7 +260,7 @@
   </head>
   <body>
     <header class="fixture-header">
-      <h1>NSW Fire Watch visual fixture</h1>
+      <h1>Australian Fire Watch visual fixture</h1>
       <p>Fake data only. Compact Home, phone command-centre, and desktop views render from the same state.</p>
     </header>
     <main class="fixtures">

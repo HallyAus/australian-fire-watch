@@ -710,4 +710,4 @@ def danger_notification_priority(
 def incident_entity_id(entry_id: str, incident_id: str) -> str:
     """Return a deterministic geo_location entity id for dashboard maps."""
     digest = sha1(incident_id.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
-    return f"geo_location.nsw_fire_watch_{entry_id[:8].lower()}_{digest}"
+    return f"geo_location.australian_fire_watch_{entry_id[:8].lower()}_{digest}"

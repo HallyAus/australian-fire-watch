@@ -7,15 +7,15 @@ from pathlib import Path
 import sys
 from types import ModuleType
 
-_PACKAGE = "custom_components.nsw_fire_watch"
+_PACKAGE = "custom_components.australian_fire_watch"
 if _PACKAGE not in sys.modules:
     package = ModuleType(_PACKAGE)
     package.__path__ = [
-        str(Path(__file__).parents[1] / "custom_components" / "nsw_fire_watch")
+        str(Path(__file__).parents[1] / "custom_components" / "australian_fire_watch")
     ]
     sys.modules[_PACKAGE] = package
 
-from custom_components.nsw_fire_watch.model import (  # noqa: E402
+from custom_components.australian_fire_watch.model import (  # noqa: E402
     Incident,
     authoritative_incident_snapshot_valid,
     classify_transition,
@@ -33,7 +33,7 @@ class IncidentModelTests(unittest.TestCase):
     def test_geo_entity_id_is_valid_lowercase(self) -> None:
         entity_id = incident_entity_id("01M16G3T2VNK", "incident-1")
         self.assertEqual(entity_id, entity_id.lower())
-        self.assertTrue(entity_id.startswith("geo_location.nsw_fire_watch_"))
+        self.assertTrue(entity_id.startswith("geo_location.australian_fire_watch_"))
 
     def test_authoritative_snapshot_rejects_partial_or_unexpected_empty(self) -> None:
         self.assertFalse(

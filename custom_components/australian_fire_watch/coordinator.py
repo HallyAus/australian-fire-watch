@@ -858,7 +858,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     else "Check the official incident feed for current information."
                 ),
                 "notification_tag": (
-                    f"nsw-fire-watch-{self.entry.entry_id}-{event.incident_id}"
+                    f"australian-fire-watch-{self.entry.entry_id}-{event.incident_id}"
                 ),
                 "test": False,
                 "official_url": self.jurisdiction.official_url,
@@ -886,7 +886,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "summary": _danger_summary(event),
                 "recommended_action": _danger_recommended_action(event),
                 "notification_tag": (
-                    f"nsw-fire-watch-{self.entry.entry_id}-danger-{event.danger_id}"
+                    f"australian-fire-watch-{self.entry.entry_id}-danger-{event.danger_id}"
                 ),
                 "test": False,
                 "official_url": OFFICIAL_DANGER_URL,
@@ -973,7 +973,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             action_base = f"{self.entry.entry_id}|{incident.id}"
             actions = [
                 {
-                    "action": f"NSW_FIRE_WATCH_ACK|{action_base}",
+                    "action": f"AUSTRALIAN_FIRE_WATCH_ACK|{action_base}",
                     "title": "Acknowledge",
                 },
                 {
@@ -989,14 +989,16 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 actions.insert(
                     1,
                     {
-                        "action": (f"NSW_FIRE_WATCH_SNOOZE|{action_base}|{minutes}"),
+                        "action": (
+                            f"AUSTRALIAN_FIRE_WATCH_SNOOZE|{action_base}|{minutes}"
+                        ),
                         "title": f"Snooze {minutes} min",
                     },
                 )
         data: dict[str, Any] = {
-            "tag": f"nsw-fire-watch-{self.entry.entry_id}-{event.incident_id}",
-            "group": f"nsw-fire-watch-{self.entry.entry_id}",
-            "url": f"/{self.entry.entry_id and 'nsw-fire-watch'}",
+            "tag": f"australian-fire-watch-{self.entry.entry_id}-{event.incident_id}",
+            "group": f"australian-fire-watch-{self.entry.entry_id}",
+            "url": f"/{self.entry.entry_id and 'australian-fire-watch'}",
             "clickAction": self.jurisdiction.official_url,
             "actions": actions,
         }
@@ -1012,9 +1014,11 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         title = _danger_summary(event)
         message = _danger_notification_message(event)
         data: dict[str, Any] = {
-            "tag": (f"nsw-fire-watch-{self.entry.entry_id}-danger-{event.danger_id}"),
-            "group": f"nsw-fire-watch-{self.entry.entry_id}",
-            "url": "/nsw-fire-watch",
+            "tag": (
+                f"australian-fire-watch-{self.entry.entry_id}-danger-{event.danger_id}"
+            ),
+            "group": f"australian-fire-watch-{self.entry.entry_id}",
+            "url": "/australian-fire-watch",
             "clickAction": OFFICIAL_DANGER_URL,
             "actions": [
                 {
@@ -1134,7 +1138,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
             "summary": f"TEST — {normalized}",
             "recommended_action": "Verify delivery only; no incident exists.",
-            "notification_tag": f"nsw-fire-watch-test-{self.entry.entry_id}",
+            "notification_tag": f"australian-fire-watch-test-{self.entry.entry_id}",
             "test": True,
             "official_url": self.jurisdiction.official_url,
         }
@@ -1216,14 +1220,14 @@ def _apply_notification_priority(
             "sound": {"name": "default", "critical": 1, "volume": 1.0},
             "interruption-level": "critical",
         }
-        data["channel"] = f"nsw_fire_watch_{kind}_critical"
+        data["channel"] = f"australian_fire_watch_{kind}_critical"
         data["ttl"] = 0
         data["priority"] = "high"
     elif priority == "time_sensitive":
         data["push"] = {"interruption-level": "time-sensitive"}
-        data["channel"] = f"nsw_fire_watch_{kind}_time_sensitive"
+        data["channel"] = f"australian_fire_watch_{kind}_time_sensitive"
     else:
-        data["channel"] = "nsw_fire_watch_information"
+        data["channel"] = "australian_fire_watch_information"
 
 
 def _unknown_danger() -> dict[str, Any]:

@@ -13,7 +13,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENTS = ROOT / "custom_components"
-DOMAIN = "nsw_fire_watch"
+DOMAIN = "australian_fire_watch"
 COMPONENT = COMPONENTS / DOMAIN
 
 
@@ -46,6 +46,40 @@ class PackagingTests(unittest.TestCase):
         )
         self.assertEqual([DOMAIN], integrations)
 
+    def test_legacy_namespace_is_not_published(self) -> None:
+        excluded_parts = {".git", ".ruff_cache", "__pycache__"}
+        text_suffixes = {
+            ".html",
+            ".js",
+            ".json",
+            ".md",
+            ".py",
+            ".toml",
+            ".txt",
+            ".yaml",
+            ".yml",
+        }
+        legacy_markers = (
+            "nsw" + "_fire_watch",
+            "nsw" + "-fire-watch",
+            "NSW" + "_FIRE_WATCH",
+            "NSW" + " Fire Watch",
+        )
+
+        for path in ROOT.rglob("*"):
+            if excluded_parts.intersection(path.parts):
+                continue
+            relative_path = str(path.relative_to(ROOT))
+            for marker in legacy_markers:
+                with self.subTest(path=relative_path, marker=marker):
+                    self.assertNotIn(marker, relative_path)
+            if not path.is_file() or path.suffix.lower() not in text_suffixes:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for marker in legacy_markers:
+                with self.subTest(path=relative_path, marker=marker):
+                    self.assertNotIn(marker, text)
+
     def test_hacs_manifest(self) -> None:
         manifest = json.loads((ROOT / "hacs.json").read_text(encoding="utf-8"))
         self.assertEqual("Australian Fire Watch", manifest["name"])
@@ -73,9 +107,7 @@ class PackagingTests(unittest.TestCase):
             self.assertTrue((COMPONENT / "config_flow.py").is_file())
 
         setup = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
-        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
-        self.assertIn("async def async_migrate_entry", setup)
-        self.assertNotIn("async def async_migrate_entry", flow)
+        self.assertNotIn("async def async_migrate_entry", setup)
 
     def test_local_brand_icon(self) -> None:
         icon = COMPONENT / "brand" / "icon.png"
@@ -98,7 +130,9 @@ class PackagingTests(unittest.TestCase):
                 path = vendor / name
                 self.assertFalse(path.exists())
 
-        panel = (frontend / "nsw-fire-watch-panel.js").read_text(encoding="utf-8")
+        panel = (frontend / "australian-fire-watch-panel.js").read_text(
+            encoding="utf-8"
+        )
         self.assertNotIn("maplibre", panel.casefold())
         self.assertNotIn("openfreemap", panel.casefold())
         self.assertRegex(panel, r"\bMAP_DEFAULT_ZOOM\s*=\s*11\b")
@@ -130,13 +164,13 @@ class PackagingTests(unittest.TestCase):
             / "blueprints"
             / "automation"
             / "hallyaus"
-            / "nsw_fire_watch_assigned_alerts.yaml"
+            / "australian_fire_watch_assigned_alerts.yaml"
         )
         text = blueprint.read_text(encoding="utf-8")
         for marker in (
-            "event_type: nsw_fire_watch_alert",
-            "NSW_FIRE_WATCH_ACK|",
-            "NSW_FIRE_WATCH_SNOOZE|",
+            "event_type: australian_fire_watch_alert",
+            "AUSTRALIAN_FIRE_WATCH_ACK|",
+            "AUSTRALIAN_FIRE_WATCH_SNOOZE|",
             "notification_allowed",
             "alert_kind",
         ):

@@ -1,7 +1,7 @@
 # Australian Fire Watch Community dashboard strategy
 #
 # Load the integration's frontend module as a Home Assistant dashboard resource:
-#   /api/nsw_fire_watch/frontend/nsw-fire-watch-panel.js
+#   /api/australian_fire_watch/frontend/australian-fire-watch-panel.js
 # Then create a dashboard with this YAML, or select "Australian Fire Watch" under
 # Settings > Dashboards > Add dashboard > Community dashboards (HA 2026.5+).
 #
@@ -9,9 +9,9 @@
 # If you monitor more than one location, uncomment `entity` and select one.
 
 strategy:
-  type: custom:nsw-fire-watch
+  type: custom:australian-fire-watch
   title: Australian Fire Watch
-  # entity: sensor.nsw_fire_watch_home
+  # entity: sensor.australian_fire_watch_home
   zone_entity: zone.home
   geo_location_source: nsw_rural_fire_service_feed
   show_map: true
