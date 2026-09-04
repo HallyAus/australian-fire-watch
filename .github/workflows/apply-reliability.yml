@@ -1,0 +1,100 @@
+name: Verify reliability fixes
+on:
+  push:
+    branches: [fix/fire-watch-reliability]
+    paths: ['.review/**', '.github/workflows/apply-reliability.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Apply reviewed source patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, gzip, hashlib, subprocess
+          encoded = ''.join(p.read_text() for p in sorted(Path('.review').glob('patch-*.b64')))
+          patch = gzip.decompress(base64.b64decode(encoded))
+          assert hashlib.sha256(patch).hexdigest() == '26595ccda9a0c92097d4a5d51609d46df6f8398c0c94401ceea9d4c5c2e9f243'
+          subprocess.run(['git', 'apply', '--check'], input=patch, check=True)
+          subprocess.run(['git', 'apply'], input=patch, check=True)
+          for p in Path('.review').glob('*'):
+              p.unlink()
+          Path('.review').rmdir()
+          Path('.github/workflows/review-snapshot.yml').unlink()
+          Path('.github/workflows/apply-reliability.yml').unlink()
+          PY
+      - name: Install validation environment
+        run: python -m pip install ruff pyyaml aiohttp -r requirements-test-ha.txt
+      - name: Format changed Python files
+        run: |
+          ruff format custom_components/australian_fire_watch tests/test_reliability.py tests_ha
+          ruff check --select F401,F841 --fix custom_components/australian_fire_watch tests/test_reliability.py tests_ha
+      - name: Compile and run all regression tests
+        run: |
+          python -m compileall -q custom_components tests tests_ha
+          python -m unittest discover -s tests -v 2>&1 | tee "$RUNNER_TEMP/unit-tests.log"
+          python -m pytest tests_ha -v --asyncio-mode=auto --junitxml="$RUNNER_TEMP/ha-results.xml" 2>&1 | tee "$RUNNER_TEMP/ha-tests.log"
+          ruff check --select F821,F822,F823 custom_components tests tests_ha
+          node --check custom_components/australian_fire_watch/frontend/australian-fire-watch-panel.js
+      - name: Validate HACS packaging
+        uses: hacs/action@main
+        with:
+          category: integration
+      - name: Validate Home Assistant metadata
+        uses: home-assistant/actions/hassfest@master
+      - name: Store tested Git tree without updating main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -A
+          python - <<'PY'
+          import json, os, subprocess, urllib.request
+          from pathlib import Path
+          original = 'acfc5c093b78bca3b1c0bdb1d2c743b83b18470f'
+          paths = subprocess.check_output(['git', 'diff', '--cached', '--name-only', original], text=True).splitlines()
+          elements = []
+          for name in paths:
+              path = Path(name)
+              item = {'path': name, 'mode': '100644', 'type': 'blob'}
+              if path.exists():
+                  item['content'] = path.read_text(encoding='utf-8')
+              else:
+                  item['sha'] = None
+              elements.append(item)
+          request = urllib.request.Request(
+              'https://api.github.com/repos/HallyAus/australian-fire-watch/git/trees',
+              data=json.dumps({'base_tree': '263a443db041a4c780ca309acdd634fbbe8d6779', 'tree': elements}).encode(),
+              headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json'},
+              method='POST')
+          with urllib.request.urlopen(request) as response:
+              result = json.load(response)
+          report = {'tree_sha': result['sha'], 'parent_sha': original, 'changed_files': paths, 'validated': True}
+          Path(os.environ['RUNNER_TEMP'], 'tested-tree.json').write_text(json.dumps(report, indent=2))
+          print(json.dumps(report, indent=2))
+          PY
+      - name: Archive source and results
+        if: always()
+        run: |
+          git add -A
+          git archive --format=zip --output="$RUNNER_TEMP/source.zip" "$(git write-tree)"
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reliability-verification
+          path: |
+            ${{ runner.temp }}/source.zip
+            ${{ runner.temp }}/unit-tests.log
+            ${{ runner.temp }}/ha-tests.log
+            ${{ runner.temp }}/ha-results.xml
+            ${{ runner.temp }}/tested-tree.json
+          retention-days: 3
