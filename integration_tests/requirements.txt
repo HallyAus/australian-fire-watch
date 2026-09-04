@@ -1,3 +1,5 @@
 # Home Assistant runtime harness, pinned to the 3 September 2026 release.
 pytest-homeassistant-custom-component==0.13.363
+# Match homeassistant 2026.9.0's frontend manifest for actual setup/reload tests.
+home-assistant-frontend==20260826.4
 PyYAML==6.0.3
