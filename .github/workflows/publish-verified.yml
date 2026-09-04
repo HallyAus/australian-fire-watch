@@ -1,0 +1,57 @@
+name: Publish verified reliability source
+on:
+  push:
+    branches: [fix/fire-watch-reliability]
+    paths: ['.github/workflows/publish-verified.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: reliability-verification
+          run-id: 33921990930
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/verified-source
+      - name: Publish clean source commit without workflow changes
+        env:
+          GIT_AUTHOR_NAME: Australian Fire Watch maintenance
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: Australian Fire Watch maintenance
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          base=acfc5c093b78bca3b1c0bdb1d2c743b83b18470f
+          git worktree add --detach "$RUNNER_TEMP/clean-source" "$base"
+          python - <<'PY'
+          import os, pathlib, zipfile
+          root = pathlib.Path(os.environ['RUNNER_TEMP'])
+          target = root / 'clean-source'
+          with zipfile.ZipFile(root / 'verified-source' / 'source.zip') as archive:
+              for name in archive.namelist():
+                  path = pathlib.PurePosixPath(name)
+                  assert not path.is_absolute() and '..' not in path.parts and '.git' not in path.parts
+              archive.extractall(target)
+          assert not (target / '.review').exists()
+          assert not (target / '.github/workflows/apply-reliability.yml').exists()
+          assert '1.0.1' in (target / 'custom_components/australian_fire_watch/manifest.json').read_text()
+          assert '_publish_local_data' in (target / 'custom_components/australian_fire_watch/coordinator.py').read_text()
+          print('VALIDATE_WORKFLOW_BEGIN')
+          print((target / '.github/workflows/validate.yml').read_text())
+          print('VALIDATE_WORKFLOW_END')
+          PY
+          cd "$RUNNER_TEMP/clean-source"
+          git restore --source "$base" .github/workflows/validate.yml
+          git add -A
+          git diff --cached --stat
+          git commit -m "fix: prevent false clears and missed fire warnings"
+          git push origin HEAD:refs/heads/fix/fire-watch-verified
+          echo "VERIFIED_COMMIT=$(git rev-parse HEAD)"
+          echo "VERIFIED_TREE=$(git rev-parse HEAD^{tree})"
