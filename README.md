@@ -1,435 +1,210 @@
-# NSW Fire Watch for Home Assistant
+# Australian Fire Watch for Home Assistant
 
-NSW Fire Watch is a mobile-first Home Assistant integration and dashboard for
-bush-fire awareness in New South Wales. It puts the official warning and the
-action to take first, keeps control status and distance as separate facts, moves
-planned burns out of the urgent incident list, and turns feed changes into
-deduplicated lifecycle events for assigned alerts.
+Australian Fire Watch is a HACS-installable Home Assistant integration and
+mobile-first dashboard for bushfire awareness across every Australian state and
+territory. It normalises official incident feeds, ranks nearby warnings, creates
+native geo-location entities, and can send lifecycle-aware notifications.
 
-> [!CAUTION]
-> NSW Fire Watch is supplementary, unofficial software. It is not endorsed by
-> NSW RFS, the Bureau of Meteorology, or Home Assistant. Do not rely on it as
-> your only warning channel. Keep **Hazards Near Me NSW / Fires Near Me NSW**, a
-> battery radio, and your bush-fire survival plan available. In an emergency,
-> call **Triple Zero (000)**.
+The integration domain remains nsw_fire_watch so existing NSW Fire Watch
+installations upgrade without losing entity IDs, services, automations, or
+acknowledgement history.
 
-> [!NOTE]
-> The current build has been deployed and verified on a live Home Assistant
-> installation. The public repository is available now and can be added to HACS
-> as a custom repository, but it is still a pre-release pilot: the first tagged
-> `v0.1.1` release is waiting for a green CI run. GitHub currently refuses to
-> start the repository's workflow because of an account billing lock; this is an
-> infrastructure gate, not a reported test failure. See [STATUS.md](STATUS.md).
+> **Safety**
+>
+> This is supplementary, unofficial software. It is not endorsed by any
+> emergency service, the Bureau of Meteorology, or Home Assistant. Never treat
+> missing, stale, or unavailable data as safe. Keep your jurisdiction's official
+> emergency app and alerts enabled, listen to local radio, and follow emergency
+> instructions. In a life-threatening emergency call Triple Zero (000).
 
-## Why this is different
+## What is included
 
-- A severity-first hero shows Emergency Warning, Watch and Act, or Advice before
-  maps and secondary detail.
-- The incident list is nearest-first for fast local scanning, while the hero's
-  priority incident remains warning/severity-first so a more distant Emergency
-  Warning cannot be hidden by a nearby lower-level incident.
-- Official warning level, incident type, control status, proximity, and fire
-  danger rating remain distinct. A nearby uncontrolled incident does not get
-  mislabelled as an official Emergency Warning.
-- Today and tomorrow use the Australian Fire Danger Rating System (AFDRS), with
-  Total Fire Ban state and source timestamps.
-- Stale, missing, or malformed data is visibly unavailable; it is never shown as
-  green, "safe", or an all-clear.
-- Lifecycle tracking emits only meaningful transitions such as new, escalated,
-  de-escalated, `left_radius`, and resolved. Moving into a closer proximity band
-  is an escalation and clears acknowledgement/snooze state.
-- A bundled, responsive panel works inside the authenticated Home Assistant UI
-  and Companion App. No separate web login, worker URL, shared secret, or cloud
-  account is required.
-- A compact command brief answers what matters now, keeps a sticky **Home** exit
-  visible on mobile, and progressively discloses forecast, readiness, planned
-  burn, and source detail.
-- A locally bundled MapLibre renderer uses OpenFreeMap's Liberty vector style,
-  starts near home at zoom 11, will not zoom farther out than zoom 9, and needs
-  no map API key or additional signup.
-- An optional automation blueprint assigns alerts to a Companion App device with
-  bounded acknowledgement and snooze controls.
+- One config flow for ACT, NSW, NT, Queensland, South Australia, Tasmania,
+  Victoria, and Western Australia.
+- Official-warning, control-status, incident-type, planned-burn, distance, and
+  feed-health fields kept separate.
+- Radius-aware, deduplicated lifecycle events and optional direct notifications.
+- Dynamic geo_location entities for every mapped incident.
+- A bundled sidebar command centre and a reusable Lovelace card.
+- A bundled Home Assistant dashboard strategy.
+- Home Assistant's native map card, using the monitored zone as the focus and
+  incident entities as non-focusing overlays.
+- NSW fire-danger, Total Fire Ban, FBI, and BOM warning enrichment retained for
+  existing users.
 
 ## Install with HACS
 
-This project is distributed as a HACS **Integration** custom repository. Until
-the first tagged release is published, HACS installs the current default branch;
-treat that build as a pilot and keep a Home Assistant backup for rollback.
+Until the repository is listed in HACS defaults:
 
-1. In HACS, open **Integrations**, then the menu and **Custom repositories**.
-2. Add `https://github.com/HallyAus/nsw-fire-watch` with category
-   **Integration**.
-3. Search for **NSW Fire Watch**, download it, and restart Home Assistant.
-4. Go to **Settings → Devices & services → Add integration**, search for
-   **NSW Fire Watch**, and complete the setup flow.
-5. Open **NSW Fire Watch** from the sidebar after the first successful refresh.
+1. Open **HACS → Integrations → Custom repositories**.
+2. Add https://github.com/HallyAus/nsw-fire-watch as an **Integration**.
+3. Search for **Australian Fire Watch**, download it, and restart Home Assistant.
+4. Open **Settings → Devices & services → Add integration**.
+5. Select **Australian Fire Watch**, choose the state or territory containing
+   the monitored zone, and complete the setup.
+6. Open **Australian Fire Watch** from the sidebar after the first refresh.
 
-For a manual install, copy `custom_components/nsw_fire_watch` into the same path
-under your Home Assistant configuration directory, then restart Home Assistant.
-HACS is preferred because it provides update tracking and rollback to a previous
-release.
+The dashboard ships inside the integration. No manual resource, card download,
+or dashboard YAML is required.
 
-### Configure a monitored location
+### Manual installation
 
-Create a config entry for each location that needs its own radius and alert
-assignment. Use a Home Assistant zone rather than entering coordinates into
-automations or dashboards. A typical first entry is the `zone.home` location.
+Copy custom_components/nsw_fire_watch to the same path under the Home Assistant
+config directory, restart Home Assistant, then add the integration in the UI.
 
-Start with conservative radii, review the resulting list, and tune them for local
-roads, terrain, family plans, and official guidance. Distance is a screening
-tool—not a prediction of fire travel, time to impact, or property safety.
+## Dashboard and card
 
-The integration creates a summary sensor consumed by the bundled panel/card and
-tracks its previous incident snapshot in Home Assistant storage. Initial setup
-establishes a baseline; it does not notify for every incident already in the
-feed.
+The integration registers /nsw-fire-watch as its sidebar dashboard. The same UI
+is available as a card:
 
-## Dashboard and mobile access
+    type: custom:nsw-fire-watch-card
+    show_map: true
+    show_readiness: true
 
-The integration registers the `/nsw-fire-watch` panel on the same origin as Home
-Assistant. This sidebar panel is the primary and most reliable dashboard. It
-inherits the current Home Assistant session:
+For a compact Home view:
 
-- at home, the Companion App may use the local Home Assistant URL;
-- away from home, it uses the remote URL configured for that Home Assistant
-  server, including Home Assistant Cloud/Nabu Casa when enabled;
-- the integration does not store or proxy the external URL, credentials, access
-  tokens, or a second shared secret; and
-- relative links in notifications open the correct server selected by the app.
+    type: custom:nsw-fire-watch-card
+    compact: true
+    show_map: false
+    show_readiness: false
 
-There is no Cloudflare Worker or separate snapshots login. The panel never asks
-for a worker URL or shared secret and does not store either value in
-`localStorage`. If that connection form appears, the user has opened the legacy
-Command Centre frontend rather than the NSW Fire Watch sidebar panel.
+If more than one location is configured, set the summary sensor explicitly:
 
-Remote access and push delivery still depend on the Companion App and Home
-Assistant remote access being healthy. Test both while on home Wi-Fi and while
-using mobile data before fire season.
+    type: custom:nsw-fire-watch-card
+    entity: sensor.nsw_fire_watch_home_status
 
-The frontend is dependency-free and ships inside the integration. It provides:
+The map is Home Assistant's standard map card. It uses default_zoom: 11,
+auto_fit: false, and fit_zones: false; this avoids a distant statewide incident
+pulling the local view away from the monitored zone.
 
-- `nsw-fire-watch-panel` for the sidebar;
-- `custom:nsw-fire-watch-card` for a Lovelace view; and
-- `custom:nsw-fire-watch` for Home Assistant Community dashboards that support
-  strategy registration.
+The bundled dashboard strategy remains available under its backward-compatible
+name:
 
-The integration registers its frontend module automatically. For a compact
-status card near the top of an existing Home dashboard, use:
+    strategy:
+      type: custom:nsw-fire-watch
 
-```yaml
-type: custom:nsw-fire-watch-card
-entity: sensor.home_status
-title: NSW Fire Watch
-compact: true
-show_map: true
-show_readiness: false
-```
+## Jurisdictions and official data
 
-Replace the example entity with the summary entity created for the monitored
-location. The compact card keeps the current status, priority incident, fire
-danger, feed health, a local incident map, and the link to the full panel in one
-mobile-first container. The command brief stays ahead of the map so urgent
-information does not require searching or panning.
+Australian emergency data is published separately by each jurisdiction, so
+there is no single national incident schema. Australian Fire Watch uses an
+explicit adapter for each documented public product:
 
-### Incident map
-
-The card and panel bundle MapLibre GL JS 5.24.0's CSP-compatible browser assets
-inside the integration and render the keyless
-[OpenFreeMap Liberty](https://openfreemap.org/quick_start/) vector style. The map
-centres on the configured Home Assistant zone at zoom 11 and enforces a minimum
-zoom of 9 instead of auto-fitting every incident across NSW. This keeps the
-first view local while still allowing the user to zoom in and inspect markers.
-
-Map attribution remains visible. If WebGL or the public vector-tile service is
-unavailable, the current warning, command brief, and nearest-first incident list
-continue to work and the map area offers an official-source fallback; a map
-failure never changes the fire status. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the bundled software and
-map-data terms.
-
-This renderer is an interim compatibility layer for Home Assistant versions
-whose native map still uses the affected CARTO raster path. Home Assistant has
-already [merged a move to Shortbread vector tiles](https://github.com/home-assistant/frontend/commit/337e8856);
-the bundled renderer can be reassessed and removed after that change ships in a
-supported Home Assistant release and is verified locally and remotely.
-
-The dedicated sidebar panel remains the recommended mobile experience. Home
-Assistant does not await third-party frontend modules before evaluating every
-dashboard path, so the Community strategy—and, on the first frontend load after
-an install or update, the compact card—can briefly be evaluated before the
-module is ready. Reload the dashboard once if Home Assistant reports an unknown
-strategy or custom element. The integration-owned sidebar panel is the reliable
-cold-start path.
-
-### Household readiness helpers
-
-The integration options can include `input_boolean` helpers as tappable
-household-readiness checks. A starter package is provided in
-[`examples/readiness-package.yaml`](examples/readiness-package.yaml). Configure
-only concrete preparation tasks, such as reviewing the survival plan, checking
-the go-bag, confirming contacts, and preparing pet transport. A checked helper
-records that task only; it never means the household, property, or route is
-safe.
-
-### Summary payload and totals
-
-Home Assistant limits the size of state attributes stored by the recorder. The
-summary sensor therefore includes the 10 nearest active incidents and the 4
-nearest planned burns in its `incidents` and `planned_burns` attributes. The
-severity-first `highest_priority_incident` is calculated separately and is not
-changed by this display order. Complete publisher totals remain available as
-`incident_count` and `planned_burn_count`, and the dashboard labels any rows
-omitted from its compact payload. All generated `geo_location` entities remain
-available to Home Assistant. This trimming protects recorder health; it does
-not reinterpret a missing row as a resolved incident or an all-clear.
-
-## Assigned mobile alerts
-
-HACS installs the custom integration directory but does not copy repository-root
-blueprints. Import the blueprint separately from:
-
-`https://raw.githubusercontent.com/HallyAus/nsw-fire-watch/main/blueprints/automation/hallyaus/nsw_fire_watch_assigned_alerts.yaml`
-
-In Home Assistant, open **Settings → Automations & scenes → Blueprints → Import
-blueprint**, paste that URL, then create an automation from **NSW Fire Watch -
-assigned mobile alerts**.
-
-Create one blueprint automation per assigned Companion App device. Each instance
-can filter to a configured location, select a minimum warning level, include
-fire-danger/Total Fire Ban changes, and choose which lifecycle changes are
-delivered.
-
-Delivery has a single owner. When one or more `notify.*` services are assigned in
-the integration options, direct integration delivery owns those recipients and
-every event carries `direct_delivery_configured: true`; the supplied blueprint
-automatically stands down. To make the blueprint the delivery owner, leave the
-integration notification-service list empty. Do not create a second user
-automation for the same recipient unless duplicate notifications are
-intentional.
-
-Both delivery paths observe intentionally bounded safety rules:
-
-- Advice is a normal notification and may be snoozed for up to two hours.
-- Watch and Act is time-sensitive and may be snoozed for only 15–30 minutes.
-- Emergency Warning can be acknowledged but never snoozed.
-- Escalation overrides the lifecycle filter and any active snooze.
-- Critical delivery applies to an incident Emergency Warning and to today's
-  Catastrophic rating or Total Fire Ban. It never applies to Advice, tests,
-  de-escalation, resolution, `left_radius`, or "no incidents" messages.
-- Resolution means the incident is no longer present in the current feed. The
-  message explicitly does **not** call that an all-clear.
-
-The phone operating system controls whether critical alerts may bypass Focus,
-Do Not Disturb, or mute. Verify those permissions and the **NSW Fire Watch**
-notification channel on each assigned device. Do not assume an alert was seen;
-use a household check-in plan as well.
-
-The blueprint exposes an optional **Additional delivery actions** input for a
-notify group, wall panel, TTS, or another user-owned action. Those actions may use
-the variables `alert_title`, `alert_message`, `alert_data`, `incident_id`,
-`location_name`, `lifecycle`, `level`, and `official_url`.
-
-### Lifecycle event contract
-
-The integration fires `nsw_fire_watch_alert` for both incident and fire-danger
-lifecycle changes. Consumers must branch on `alert_kind` before reading the
-nested object:
-
-| Field | Meaning |
+| Jurisdiction | Publisher and product |
 | --- | --- |
-| `alert_kind` | `incident` or `danger`; selects the nested payload shape |
-| `entry_id`, `location_name` | Monitored Home Assistant config entry/location |
-| `lifecycle` | `new`, `updated`, `escalated`, `deescalated`, `resolved`, `left_radius`, or `test` |
-| `incident_id`, `incident` | For `alert_kind: incident`, stable publisher identity and the current nested warning/type/control/distance/timestamp/URL mapping; `incident` is `null` on resolution |
-| `danger_id`, `danger` | For `alert_kind: danger`, calendar-date identity and the nested district, period, rating, rating rank, Total Fire Ban, issue time, and source mapping |
-| `previous` | Minimal previous nested snapshot used to explain a transition or resolution |
-| `qualifies_for_alert` | Whether the incident radius or published fire-danger/ban threshold qualifies for assigned delivery |
-| `notification_allowed` | Acknowledgement/snooze gate for routine incident delivery; escalation and safety-relevant lifecycle changes remain allowed |
-| `delivery_priority` | Integration classification: `normal`, `time_sensitive`, or `critical`; tests and clearing/de-escalation events are normal |
-| `direct_delivery_configured` | `true` when integration-owned `notify.*` targets exist, instructing the supplied blueprint to stand down |
-| `test` | Explicit test marker; test events never become critical |
-| `summary`, `recommended_action`, `notification_tag` | Optional notification-ready convenience fields |
-| `official_url` | Official publisher destination for the incident or danger product |
+| ACT | ACT Emergency Services Agency CAP incidents |
+| NSW | NSW RFS CAP-AU, Current Incidents GeoJSON, IncidentAlerts, and fire-danger/Total Fire Ban products; optional BOM NSW context |
+| NT | NT Police, Fire and Emergency Services incident-map JSON |
+| Queensland | Queensland Fire Department ESCAD current-incidents GeoJSON |
+| South Australia | SA Country Fire Service Alert SA fire CAP feed |
+| Tasmania | Tasmania Fire Service bushfire and alert KML |
+| Victoria | Emergency Management Victoria public events GeoJSON |
+| Western Australia | Emergency WA's designated public incident and warning RSS feeds |
 
-`left_radius` is not a resolution: the incident is still present in the current
-official data but has moved outside the configured monitoring radius. Incident
-`resolved` is emitted only after absence is confirmed across two healthy
-authoritative snapshots. A danger `resolved` event means a qualifying published
-rating or Total Fire Ban declaration changed or ended; it is not an all-clear.
+Every adapter filters for bush, grass, vegetation, or wildfire activity and
+explicit planned burns. Structure, vehicle, and building fires are excluded.
+The upstream record's warning and control fields are never conflated.
 
-The public actions are:
+Emergency WA permits automated access only to its designated RSS, CAP-AU, and
+SLIP feeds, with no more than one request per feed every five minutes. Australian
+Fire Watch uses the official all-regions incident and warning RSS links exposed
+on Emergency WA's About page, and its five-minute coordinator interval observes
+that limit. It does not use undocumented Emergency WA API endpoints.
 
-- `nsw_fire_watch.acknowledge` — record acknowledgement for one incident;
-- `nsw_fire_watch.snooze` — suppress bounded reminders for one incident using
-  `duration_minutes`; and
-- `nsw_fire_watch.test_alert` — emit a clearly labelled test event without
-  impersonating a live warning.
+Tasmania uses the public TFS KML products. Australian Fire Watch does not scrape
+TasALERT or use feeds for which the publisher requires prior permission.
 
-Use the test action after changing notification recipients, remote access,
-critical-alert permissions, or dashboard routes.
+## NSW fire-danger enrichment
 
-## Better API choice
+The national release preserves the mature NSW pipeline:
 
-NSW Fire Watch talks directly to documented NSW RFS and Bureau publisher
-products. It does not scrape the Fires Near Me webpage, depend on five generated
-template sensors, or call the undocumented per-incident endpoint exposed inside
-feed identifiers.
+- NSW RFS is the source of truth for current warning levels, fire-danger
+  ratings, and Total Fire Bans.
+- BOM products add optional fire-weather and Fire Behaviour Index context.
+- CAP and GeoJSON snapshots are cross-checked before missing incidents can move
+  toward resolved.
 
-The official-source stack is deliberately layered:
+Fire-danger enrichment for other jurisdictions is intentionally shown as
+**Unknown / unavailable** in this release. Users must consult the official state
+or territory source. Unknown never becomes No Rating.
 
-| Publisher product | Integration role |
-| --- | --- |
-| NSW RFS [`majorIncidentsCAP.xml`](https://www.rfs.nsw.gov.au/feeds/majorIncidentsCAP.xml) (CAP-AU) | Structured alert identity, official warning text and instructions, expiry, and geometry |
-| NSW RFS [`majorIncidents.json`](https://www.rfs.nsw.gov.au/feeds/majorIncidents.json) (Current Incidents GeoJSON) | Complete incident set, stable identifiers, point/perimeter geometry, operational detail, and incident fallback/cross-check |
-| NSW RFS [`IncidentAlerts.xml`](https://www.rfs.nsw.gov.au/feeds/IncidentAlerts.xml) | Supplemental published alert/warning polygons |
-| NSW RFS [`fdrToban.xml`](https://www.rfs.nsw.gov.au/feeds/fdrToban.xml) | Primary today/tomorrow AFDRS rating and Total Fire Ban declarations |
-| Bureau [`IDN10016.xml`](https://www.bom.gov.au/fwo/IDN10016.xml) | Optional published four-day NSW Fire Behaviour Index/rating outlook |
-| Bureau [`IDZ00061.warnings_land_nsw.xml`](https://www.bom.gov.au/fwo/IDZ00061.warnings_land_nsw.xml) | Optional official NSW land/fire-weather warning context |
+## Notifications
 
-Compared with consuming only Home Assistant's derived `geo_location` entities,
-the source stack retains publisher identifiers and geometry, exposes coherent
-feed health, and detects material changes before Home Assistant entity names are
-generated. CAP and GeoJSON are merged conservatively: a higher official warning
-may win, but control status is never promoted into a warning.
+Enter one or more fully-qualified notify.* services in the integration options.
+Notifications are raised only for meaningful lifecycle changes such as newly
+qualifying incidents, escalation, de-escalation, leaving the monitored radius,
+or resolution after healthy snapshots.
 
-The documented products are preferred over an attractive but unsupported
-private endpoint because publisher intent and change visibility matter more than
-an extra field in an emergency-adjacent system. Requests use conditional HTTP
-validators where available, retain a clearly marked last-known-good response,
-cap response size, and back off after failures. No API key, paid tier, account,
-or additional signup is required.
+Emergency Warning updates cannot be silenced by acknowledgement or snooze.
+Android and iOS notification priorities are derived from the official warning
+level. Test alerts are clearly labelled and never use the critical path.
 
-Existing Home Assistant weather entities may be shown as supplementary local
-context, but weather values are never used to invent a fire-spread direction or
-evacuation recommendation.
+The included blueprint is:
+blueprints/automation/hallyaus/nsw_fire_watch_assigned_alerts.yaml
+
+Its event and action names retain the NSW_FIRE_WATCH_* prefix for upgrade
+compatibility.
+
+## Configuration
+
+UI setup is recommended. A backward-compatible YAML import is also supported:
+
+    nsw_fire_watch:
+      name: Home
+      zone: zone.home
+      jurisdiction: NSW
+      fire_danger_district: Greater Sydney Region
+      monitor_radius_km: 150
+      emergency_radius_km: 100
+      watch_radius_km: 50
+      advice_radius_km: 20
+      unclassified_fire_radius_km: 10
+      stale_after_minutes: 45
+      enable_bom_enrichment: true
+
+For non-NSW entries, omit fire_danger_district; NSW-only enrichment is
+automatically disabled regardless of the checkbox.
 
 ## Migration from a legacy RFS dashboard
 
-Migrate side by side so there is always a recoverable warning path:
+1. Install Australian Fire Watch and configure the same zone.
+2. Confirm the summary, feed-health, and mapped incident entities update.
+3. Test the bundled dashboard and notification path.
+4. Disable old real-time RFS alert automations to prevent duplicate notices.
+5. Keep old entities for comparison until at least one healthy refresh cycle.
+6. Remove legacy dashboards and integrations only after the new path is proven.
 
-1. Create a full Home Assistant backup and export the existing fire automations
-   before changing them.
-2. Install NSW Fire Watch and configure the same home zone. Leave the old RFS
-   feed, template sensors, map card, and notifications in place initially.
-3. Compare incident counts, warning labels, distance, feed age, and official
-   links over several refreshes. Use `nsw_fire_watch.test_alert` to verify the
-   new mobile path without waiting for a real event.
-4. Import the assigned-alert blueprint. Keep the resulting automation disabled
-   until the test reaches the intended phone locally and remotely.
-5. Enable the new alert automation, then disable—not delete—the old manual and
-   real-time RFS alert automations. This prevents duplicate notifications while
-   preserving a one-click fallback.
-6. After a stable observation period, remove the five hand-written nearest-
-   incident template sensors, distance-only list, legacy emergency helper, and
-   oversized map-first card only after confirming nothing else references them.
-7. Keep the official Hazards Near Me NSW app and other official channels in
-   service throughout the migration.
-
-Do not migrate unrelated weather, grocery, camera, or household automations into
-this project. A dedicated fire dashboard should remain focused during stress.
+Existing NSW Fire Watch config entries are migrated to jurisdiction: NSW
+automatically. The domain and entity namespace do not change.
 
 ## Recovery and rollback
 
-If the integration or a release behaves unexpectedly:
+If a release fails:
 
-1. Disable every automation created from the NSW Fire Watch alert blueprint.
-2. Re-enable the previous fire alert automation if it was retained during the
-   migration.
-3. In **Settings → Devices & services**, disable or remove the NSW Fire Watch
-   config entry. Removing an entry removes its entities and stored alert state;
-   it does not change official services or the Companion App.
-4. In HACS, redownload the previously known-good release, or remove the
-   integration and restart Home Assistant.
-5. Restore the pre-migration Home Assistant backup only if configuration files
-   were also removed or changed and the targeted rollback is insufficient.
+1. Keep official emergency channels enabled and use them as the source of truth.
+2. In HACS, redownload the previous release.
+3. Restart Home Assistant.
+4. If necessary, disable the config entry under **Settings → Devices & services**.
 
-If the panel says data is stale, do not repeatedly restart Home Assistant as a
-substitute for checking the official source. Open Hazards Near Me NSW / Fires
-Near Me NSW, NSW RFS, radio, or other official channels first, then inspect Home
-Assistant logs for `custom_components.nsw_fire_watch`.
-
-## Safety
-
-This software deliberately does not:
-
-- declare a property, road, route, or person safe;
-- predict rate or direction of spread from wind or map geometry;
-- calculate evacuation routes or a time-to-impact;
-- promise that official warning levels will always precede a fast-moving fire;
-- treat a missing incident, stale feed, or failed request as an all-clear;
-- use camera/AI detections as an official warning source; or
-- automatically open gates, start sprinklers, control HVAC, or trigger other
-  physical safety equipment.
-
-Incident points and polygons can be approximate, and their spatial update time
-may differ from the incident-detail update time. Follow official warning text
-and your bush-fire survival plan. If you see an unattended fire, call 000.
-
-## Data sources and attribution
-
-- [NSW RFS public feeds](https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds)
-- [NSW RFS Fires Near Me](https://www.rfs.nsw.gov.au/fire-information/fires-near-me)
-- [NSW RFS alert levels](https://www.rfs.nsw.gov.au/plan-and-prepare/alert-levels)
-- [NSW RFS fire danger ratings and Total Fire Bans](https://www.rfs.nsw.gov.au/fire-information/fdr-and-tobans)
-- [Bureau of Meteorology NSW warnings](https://www.bom.gov.au/nsw/warnings/)
-- [Bureau RSS and XML feeds](https://www.bom.gov.au/rss/)
-- [Bureau brand, trademark, and display policy](https://www.bom.gov.au/data-access/brand-trademark-display-policy.shtml)
-- [Bureau copyright and terms](https://www.bom.gov.au/copyright)
-- [Bureau disclaimer](https://www.bom.gov.au/disclaimer)
-
-Required publisher attribution:
-
-> © State of New South Wales (NSW Rural Fire Service). For current information
-> go to www.rfs.nsw.gov.au.
-
-NSW RFS feed material remains subject to the licence, notices, limitations, and
-disclaimers published with those feeds. The MIT licence in this repository
-covers the NSW Fire Watch software only; it does not relicense NSW RFS, Bureau of
-Meteorology, Home Assistant, map-tile, or third-party data and marks. Official
-marks are not used as project branding. Any Bureau attribution image is the
-official, unmodified attribution asset used only for source acknowledgement; no
-endorsement is implied.
-
-The direct Bureau products are intended here for personal/internal Home
-Assistant use and are fetched by the user's own instance; this project does not
-operate a central weather-data redistribution service. Users republishing data
-or using it for a non-personal or commercial purpose must review the current
-Bureau terms and obtain the appropriate permission or registered data service.
-Keep the functional source links, issue/validity times, notices, and the Bureau's
-official unmodified attribution treatment shown by the integration.
-
-## Privacy and network behaviour
-
-Processing, radius calculations, lifecycle state, acknowledgements, and snoozes
-remain in Home Assistant. The integration makes read-only HTTPS requests to the
-official data publishers and does not run a relay, analytics service, or project-
-owned cloud backend. Location coordinates come from the selected Home Assistant
-zone and are not embedded in this repository or notification blueprint.
-
-When a dashboard map is enabled, the browser also requests its style and visible
-map tiles directly from the public OpenFreeMap service. Those tile coordinates
-approximate the area being viewed (initially the monitored zone), and the service
-receives normal request metadata such as the client IP address. Set
-`show_map: false` on the card or dashboard strategy to opt out; incident status,
-distance, warnings, and official links continue to work without the map.
-
-The Home Assistant Companion App's own push and remote-access services operate
-under their normal configuration. Review those services separately if the
-household has stricter privacy or availability requirements.
+Removing the integration stops its entities, panel, services, and notifications;
+it does not remove Home Assistant zones or readiness helpers.
 
 ## Development and validation
 
-```bash
-python -m pip install pyyaml
-python -m compileall -q custom_components tests
-python -m unittest discover -s tests -v
-```
+    python -m unittest discover -s tests -v
+    python -m compileall custom_components tests
 
-Pull requests run the HACS repository action, Home Assistant hassfest, Python
-compilation, unit tests, packaging checks, JSON validation, and blueprint checks.
-A production install still needs a Home Assistant configuration check before
-restart and a real Companion App test after restart.
+Before restarting a live instance, run Home Assistant's configuration check.
+Tests cover feed parsing, lifecycle safety, native-map packaging, JSON/YAML
+validity, and rejection of private Home Assistant state.
+
+## Data sources and attribution
+
+All feed content remains owned by its publisher and is fetched directly by each
+Home Assistant instance. Official URLs and attribution are exposed on the
+integration's feed-health data and dashboard. See THIRD_PARTY_NOTICES.md for
+publisher and licensing notes.
 
 ## Licence
 
-NSW Fire Watch software is released under the [MIT licence](LICENSE).
+Project code is released under the MIT License. Official feed content and
+publisher branding are not covered by the project's licence.

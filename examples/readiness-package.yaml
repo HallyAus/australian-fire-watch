@@ -1,7 +1,7 @@
 # Optional Home Assistant helpers for the dashboard's household-readiness list.
 #
 # Copy this file into your configured packages directory, restart Home Assistant,
-# then select these helpers in NSW Fire Watch integration options. Checking an
+# then select these helpers in Australian Fire Watch integration options. Checking an
 # item records preparation work only; it never means the property or household
 # is safe from fire.
 

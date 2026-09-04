@@ -48,7 +48,7 @@ class PackagingTests(unittest.TestCase):
 
     def test_hacs_manifest(self) -> None:
         manifest = json.loads((ROOT / "hacs.json").read_text(encoding="utf-8"))
-        self.assertEqual("NSW Fire Watch", manifest["name"])
+        self.assertEqual("Australian Fire Watch", manifest["name"])
         self.assertEqual("AU", manifest["country"])
         self.assertRegex(manifest["homeassistant"], r"^20\d{2}\.\d{1,2}\.\d+$")
 
@@ -72,6 +72,11 @@ class PackagingTests(unittest.TestCase):
         if manifest.get("config_flow"):
             self.assertTrue((COMPONENT / "config_flow.py").is_file())
 
+        setup = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        self.assertIn("async def async_migrate_entry", setup)
+        self.assertNotIn("async def async_migrate_entry", flow)
+
     def test_local_brand_icon(self) -> None:
         icon = COMPONENT / "brand" / "icon.png"
         data = icon.read_bytes()
@@ -79,54 +84,35 @@ class PackagingTests(unittest.TestCase):
         width, height = struct.unpack(">II", data[16:24])
         self.assertEqual((256, 256), (width, height))
 
-    def test_bundled_map_renderer_assets_and_contract(self) -> None:
+    def test_native_home_assistant_map_contract(self) -> None:
         frontend = COMPONENT / "frontend"
         vendor = frontend / "vendor"
-        assets = {
-            "maplibre-gl-csp.js": 500_000,
-            "maplibre-gl-csp-worker.js": 250_000,
-            "maplibre-gl.css": 20_000,
-            "MAPLIBRE-LICENSE.txt": 1_000,
-        }
-        for name, minimum_size in assets.items():
+        assets = (
+            "maplibre-gl-csp.js",
+            "maplibre-gl-csp-worker.js",
+            "maplibre-gl.css",
+            "MAPLIBRE-LICENSE.txt",
+        )
+        for name in assets:
             with self.subTest(asset=name):
                 path = vendor / name
-                self.assertTrue(path.is_file())
-                self.assertGreater(path.stat().st_size, minimum_size)
-
-        licence = (vendor / "MAPLIBRE-LICENSE.txt").read_text(encoding="utf-8")
-        self.assertIn("MapLibre contributors", licence)
-        self.assertIn("Redistribution and use", licence)
-
-        notices = ROOT / "THIRD_PARTY_NOTICES.md"
-        self.assertGreater(notices.stat().st_size, 1_000)
-        notice_text = notices.read_text(encoding="utf-8")
-        for marker in ("MapLibre GL JS 5.24.0", "OpenFreeMap", "OpenStreetMap"):
-            with self.subTest(notice=marker):
-                self.assertIn(marker, notice_text)
+                self.assertFalse(path.exists())
 
         panel = (frontend / "nsw-fire-watch-panel.js").read_text(encoding="utf-8")
-        for reference in (
-            "vendor/maplibre-gl-csp.js",
-            "vendor/maplibre-gl-csp-worker.js",
-            "vendor/maplibre-gl.css",
-            "https://tiles.openfreemap.org/styles/liberty",
-        ):
-            with self.subTest(reference=reference):
-                self.assertIn(reference, panel)
-        self.assertRegex(panel, r"\bMAP_MIN_ZOOM\s*=\s*9\b")
+        self.assertNotIn("maplibre", panel.casefold())
+        self.assertNotIn("openfreemap", panel.casefold())
         self.assertRegex(panel, r"\bMAP_DEFAULT_ZOOM\s*=\s*11\b")
-        self.assertRegex(panel, r"\bminZoom\s*:\s*MAP_MIN_ZOOM\b")
-        self.assertRegex(panel, r"\bzoom\s*:\s*MAP_DEFAULT_ZOOM\b")
-        self.assertNotIn('title: "Full incident map"', panel)
-        self.assertNotIn("auto_fit: true", panel)
-        self.assertIn("attributes.monitored_location", panel)
-        self.assertIn("validCoordinates(incident.latitude, incident.longitude)", panel)
-        self.assertIn("model.priorityIncident,", panel)
+        self.assertIn('type: "map"', panel)
+        self.assertIn("helpers.createCardElement", panel)
+        self.assertIn("window.loadCardHelpers", panel)
+        self.assertIn("auto_fit: false", panel)
+        self.assertIn("fit_zones: false", panel)
+        self.assertIn("focus: true", panel)
+        self.assertIn("focus: false", panel)
         self.assertIn("refreshBucket: Math.floor(Date.now() / 300_000)", panel)
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("tile coordinates", readme)
+        self.assertIn("Home Assistant's native map card", readme)
         self.assertIn("show_map: false", readme)
 
     def test_translations_are_valid_json(self) -> None:
@@ -175,7 +161,7 @@ class PackagingTests(unittest.TestCase):
         ):
             with self.subTest(heading=heading):
                 self.assertIn(heading, readme)
-        self.assertIn("Fires Near Me NSW", readme)
+        self.assertIn("emergency app", readme)
         self.assertIn("000", readme)
 
     def test_repository_does_not_package_home_assistant_private_state(self) -> None:

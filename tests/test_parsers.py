@@ -23,6 +23,18 @@ from custom_components.nsw_fire_watch.parsers import (  # noqa: E402
     parse_geojson,
     parse_rfs_fire_danger,
 )
+from custom_components.nsw_fire_watch.regional_parsers import (  # noqa: E402
+    fire_incidents_only,
+    parse_georss,
+    parse_nt_json,
+    parse_qld_geojson,
+    parse_qld_warning_geojson,
+    parse_tas_kml,
+    parse_vic_geojson,
+)
+from custom_components.nsw_fire_watch.jurisdictions import (  # noqa: E402
+    JURISDICTIONS,
+)
 
 
 class ParserTests(unittest.TestCase):
@@ -140,6 +152,172 @@ class ParserTests(unittest.TestCase):
             parse_rfs_fire_danger(
                 '<!DOCTYPE x [<!ENTITY bad "value">]><FireDangerMap />'
             )
+
+    def test_every_australian_jurisdiction_has_an_official_profile(self) -> None:
+        self.assertEqual(
+            {"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"},
+            set(JURISDICTIONS),
+        )
+        for profile in JURISDICTIONS.values():
+            self.assertTrue(profile.official_url.startswith("https://"))
+            self.assertTrue(profile.agency)
+
+    def test_victoria_keeps_bushfire_and_excludes_structure_fire(self) -> None:
+        payload = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "properties": {
+                        "id": "warning-1",
+                        "feedType": "warning",
+                        "category1": "Watch and Act",
+                        "category2": "Bushfire",
+                        "name": "Ridge fire",
+                        "status": "Going",
+                    },
+                    "geometry": {"type": "Point", "coordinates": [144.2, -37.1]},
+                },
+                {
+                    "properties": {
+                        "id": "house-1",
+                        "feedType": "incident",
+                        "category1": "Fire",
+                        "category2": "Structure Fire",
+                        "name": "Building fire",
+                    },
+                    "geometry": {"type": "Point", "coordinates": [144.3, -37.2]},
+                },
+            ],
+        }
+        parsed = parse_vic_geojson(
+            json.dumps(payload), official_url="https://emergency.vic.gov.au/"
+        )
+        self.assertEqual(1, len(parsed.incidents))
+        self.assertEqual("Watch and Act", parsed.incidents[0].warning_level)
+
+    def test_queensland_keeps_vegetation_and_planned_burns(self) -> None:
+        payload = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "properties": {
+                        "Master_Incident_Number": "Q1",
+                        "GroupedType": "FIRE VEGETATION",
+                        "CurrentStatus": "Going",
+                        "Location": "Range Road",
+                    },
+                    "geometry": {"type": "Point", "coordinates": [153.1, -27.2]},
+                },
+                {
+                    "properties": {
+                        "Master_Incident_Number": "Q2",
+                        "GroupedType": "FIRE STRUCTURE",
+                        "Location": "Town",
+                    },
+                    "geometry": {"type": "Point", "coordinates": [153.2, -27.3]},
+                },
+            ],
+        }
+        parsed = parse_qld_geojson(
+            json.dumps(payload), official_url="https://www.fire.qld.gov.au/"
+        )
+        self.assertEqual(["QLD-Q1"], [item.id for item in parsed.incidents])
+
+    def test_queensland_warning_layer_preserves_official_warning_level(self) -> None:
+        payload = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "properties": {
+                        "UniqueID": "W1",
+                        "EventType": "Fire",
+                        "WarningTitle": "Bushfire warning",
+                        "WarningLevel": "Watch and Act",
+                        "WarningArea": "Example locality",
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [152.8, -27.4],
+                    },
+                }
+            ],
+        }
+        parsed = parse_qld_warning_geojson(
+            json.dumps(payload), official_url="https://www.fire.qld.gov.au/"
+        )
+        self.assertEqual("Watch and Act", parsed.incidents[0].warning_level)
+
+    def test_georss_can_read_an_official_warning_level_from_the_title(self) -> None:
+        parsed = parse_georss(
+            """
+            <rss xmlns:georss="http://www.georss.org/georss"><channel><item>
+              <guid>W1</guid><title>Bushfire Watch and Act - Example locality</title>
+              <description>TYPE: Bushfire</description>
+              <georss:point>-31.9 115.9</georss:point>
+            </item></channel></rss>
+            """,
+            official_url="https://www.emergency.wa.gov.au/",
+            source="Department of Fire and Emergency Services WA",
+        )
+        self.assertEqual("Watch and Act", parsed.incidents[0].warning_level)
+
+    def test_nt_closed_fire_is_not_current(self) -> None:
+        payload = {
+            "incidents": {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "properties": {
+                            "_id": "N1",
+                            "_category": "Fire",
+                            "_eventtype": "Bushfire",
+                            "_status": "Closed",
+                        },
+                        "geometry": {"type": "Point", "coordinates": [131.0, -12.5]},
+                    }
+                ],
+            }
+        }
+        parsed = parse_nt_json(
+            json.dumps(payload), official_url="https://pfes.nt.gov.au/incidentmap"
+        )
+        self.assertFalse(parsed.incidents)
+
+    def test_tasmania_current_feed_coordinate_order_is_detected(self) -> None:
+        parsed = parse_tas_kml(
+            """
+            <kml><Document><Placemark><name>Bushfire - Lake Road</name>
+              <description>TYPE: Bushfire\nSTATUS: Going\nALERT LEVEL: Advice</description>
+              <Point><coordinates>-41.5,146.6,0</coordinates></Point>
+            </Placemark></Document></kml>
+            """,
+            official_url="https://www.fire.tas.gov.au/",
+        )
+        self.assertEqual(1, len(parsed.incidents))
+        self.assertEqual(
+            (-41.5, 146.6),
+            (parsed.incidents[0].latitude, parsed.incidents[0].longitude),
+        )
+
+    def test_tasmania_escaped_table_fields_are_parsed_and_structure_fires_filtered(
+        self,
+    ) -> None:
+        parsed = parse_tas_kml(
+            """
+            <kml><Document><Placemark><name>Example incident</name>
+              <description>&amp;lt;table&amp;gt;
+                &amp;lt;tr&amp;gt;&amp;lt;th&amp;gt;Alert Level&amp;lt;/th&amp;gt;&amp;lt;td&amp;gt;Advice&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;
+                &amp;lt;tr&amp;gt;&amp;lt;th&amp;gt;Type&amp;lt;/th&amp;gt;&amp;lt;td&amp;gt;STRUCTURE FIRE&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;
+                &amp;lt;tr&amp;gt;&amp;lt;th&amp;gt;Status&amp;lt;/th&amp;gt;&amp;lt;td&amp;gt;Going&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;
+              &amp;lt;/table&amp;gt;</description>
+              <Point><coordinates>-41.5,146.6,0</coordinates></Point>
+            </Placemark></Document></kml>
+            """,
+            official_url="https://www.fire.tas.gov.au/",
+        )
+        self.assertEqual("Advice", parsed.incidents[0].warning_level)
+        self.assertEqual("Going", parsed.incidents[0].control_status)
+        self.assertFalse(fire_incidents_only(parsed).incidents)
 
 
 if __name__ == "__main__":

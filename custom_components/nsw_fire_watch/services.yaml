@@ -4,7 +4,7 @@ acknowledge:
   fields:
     entry_id:
       name: Config entry ID
-      description: The NSW Fire Watch config entry shown on the status sensor.
+      description: The Australian Fire Watch config entry shown on the status sensor.
       required: true
       selector:
         text:
@@ -56,4 +56,3 @@ test_alert:
             - Advice
             - Watch and Act
             - Emergency Warning
-

@@ -1,47 +1,43 @@
 # Third-party notices
 
-NSW Fire Watch is MIT-licensed, but the following bundled software, imagery,
-and fetched data retain their own terms.
+Australian Fire Watch project code is MIT-licensed. Government feed content,
+publisher names, and publisher branding remain subject to their owners' terms.
 
-## MapLibre GL JS
+## Home Assistant native map
 
-The `maplibre-gl-csp.js`, `maplibre-gl-csp-worker.js`, and `maplibre-gl.css`
-files under `custom_components/nsw_fire_watch/frontend/vendor/` are from
-MapLibre GL JS 5.24.0 and are redistributed under its BSD 3-Clause licence. The
-matching CSP worker is loaded from the same Home Assistant origin. The complete
-upstream licence is included as `frontend/vendor/MAPLIBRE-LICENSE.txt`.
+The dashboard uses Home Assistant's built-in map card and does not redistribute
+a mapping engine, tile style, or tile data. Map rendering, attribution, and
+provider selection are controlled by the user's Home Assistant version.
 
-- Project: <https://maplibre.org/maplibre-gl-js/>
-- Source package: <https://www.npmjs.com/package/maplibre-gl/v/5.24.0>
+## Official emergency-service feeds
 
-## OpenFreeMap and OpenStreetMap data
+Each Home Assistant instance retrieves public publisher products directly:
 
-The incident map uses the keyless OpenFreeMap public vector-tile service and
-its Liberty style. No OpenFreeMap account or API key is bundled or required.
-OpenFreeMap requires attribution; the frontend renders permanent OpenFreeMap,
-OpenMapTiles, and OpenStreetMap credits directly beneath every map. Map data is
-from OpenStreetMap and is subject to the Open Database Licence and related
-attribution requirements. The public service has no project-level service
-guarantee, so NSW Fire Watch keeps fire status and incident lists independent
-of the map and shows an official-source fallback if it cannot load.
+- ACT Emergency Services Agency CAP data, published under CC BY 4.0.
+- NSW Rural Fire Service CAP, GeoJSON, IncidentAlerts, and fire-danger products.
+- NT Police, Fire and Emergency Services public incident-map data.
+- Queensland Fire Department public ESCAD incident data.
+- South Australian Country Fire Service Alert SA fire CAP data.
+- Tasmania Fire Service bushfire and alert KML.
+- Emergency Management Victoria public events GeoJSON.
+- Department of Fire and Emergency Services WA designated incident and warning RSS.
 
-- OpenFreeMap: <https://openfreemap.org/>
-- OpenMapTiles: <https://openmaptiles.org/>
-- OpenStreetMap copyright: <https://www.openstreetmap.org/copyright>
+The dashboard exposes the selected publisher's official page and attribution.
+No feed content is bundled in a release.
 
-## Bureau of Meteorology attribution image
+## Bureau of Meteorology
 
-The frontend embeds the Bureau of Meteorology's unmodified website-footer
-attribution image for display only when direct Bureau FBI or warning data is
-shown. It is not covered by this repository's MIT licence and is not project
-branding. The image links to the Bureau's required attribution information.
+Optional NSW enrichment fetches Bureau of Meteorology public products directly.
+The existing unmodified Bureau attribution image remains embedded in the
+frontend so attribution is available through local and remote Home Assistant
+access.
 
-- Bureau attribution policy: <http://www.bom.gov.au/data-access/3rd-party-attribution.shtml>
-- Bureau copyright: <https://www.bom.gov.au/copyright>
+## Access safeguards
 
-## NSW Rural Fire Service and Bureau data
+Polling is no more frequent than five minutes. Conditional requests, response
+size limits, timeouts, exponential backoff, and last-known-good retention reduce
+publisher load. Malformed or unexpected responses fail closed.
 
-Official NSW RFS and Bureau feed content is fetched by each user's Home
-Assistant installation and is not redistributed in this repository. See the
-README's data-source and attribution section for the applicable notices and
-limitations.
+Emergency WA's designated RSS endpoints are used instead of undocumented APIs,
+and are polled no more frequently than the publisher's five-minute limit.
+TasALERT feeds that require publisher permission are not used.

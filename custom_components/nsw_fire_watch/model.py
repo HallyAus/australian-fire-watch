@@ -11,7 +11,7 @@ from typing import Any, Iterable, Mapping
 
 
 class WarningLevel(StrEnum):
-    """Official NSW RFS warning categories."""
+    """Australian Warning System fire-warning categories."""
 
     NOT_APPLICABLE = "Not Applicable"
     ADVICE = "Advice"
@@ -105,7 +105,7 @@ def _safe_text(value: object, limit: int = 500) -> str:
 
 @dataclass(frozen=True, slots=True)
 class Incident:
-    """Normalized RFS incident. Warning, control and distance remain separate."""
+    """Normalized fire incident. Warning, control and distance remain separate."""
 
     id: str
     title: str

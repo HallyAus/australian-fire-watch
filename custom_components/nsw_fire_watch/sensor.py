@@ -1,4 +1,4 @@
-"""Sensor entities for NSW Fire Watch."""
+"""Sensor entities for Australian Fire Watch."""
 
 from __future__ import annotations
 
@@ -59,10 +59,10 @@ class FireWatchSensorBase(CoordinatorEntity[FireWatchCoordinator], SensorEntity)
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
             name=self.coordinator.entry.title,
-            manufacturer="NSW Fire Watch community project",
-            model="Official NSW RFS/BOM feed monitor",
+            manufacturer="Australian Fire Watch community project",
+            model=f"Official {self.coordinator.jurisdiction.code} fire feed monitor",
             sw_version=VERSION,
-            configuration_url="https://www.rfs.nsw.gov.au/fire-information/fires-near-me",
+            configuration_url=self.coordinator.jurisdiction.official_url,
         )
 
 

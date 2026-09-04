@@ -1,16 +1,22 @@
-"""Constants for NSW Fire Watch."""
+"""Constants for Australian Fire Watch.
+
+The integration domain remains ``nsw_fire_watch`` so existing installations,
+entities, services, blueprints, and HACS upgrades keep working.
+"""
 
 from __future__ import annotations
 
 from datetime import timedelta
 
 DOMAIN = "nsw_fire_watch"
-NAME = "NSW Fire Watch"
-VERSION = "0.1.1"
+NAME = "Australian Fire Watch"
+VERSION = "0.2.0"
+CONFIG_ENTRY_VERSION = 2
 
 PLATFORMS = ["sensor", "binary_sensor", "geo_location"]
 
 CONF_NAME = "name"
+CONF_JURISDICTION = "jurisdiction"
 CONF_ZONE = "zone"
 CONF_DISTRICT = "fire_danger_district"
 CONF_WEATHER_ENTITY = "weather_entity"
@@ -25,6 +31,7 @@ CONF_STALE_AFTER = "stale_after_minutes"
 CONF_ENABLE_BOM = "enable_bom_enrichment"
 
 DEFAULT_NAME = "Home"
+DEFAULT_JURISDICTION = "NSW"
 DEFAULT_ZONE = "zone.home"
 DEFAULT_DISTRICT = "Greater Sydney Region"
 DEFAULT_MONITOR_RADIUS_KM = 150.0
@@ -63,7 +70,7 @@ SERVICE_SNOOZE = "snooze"
 SERVICE_TEST_ALERT = "test_alert"
 
 PANEL_SLUG = "nsw-fire-watch"
-PANEL_TITLE = "NSW Fire Watch"
+PANEL_TITLE = "Australian Fire Watch"
 PANEL_ICON = "mdi:fire-alert"
 FRONTEND_URL_PATH = "/api/nsw_fire_watch/frontend"
 PANEL_JS_FILE = "nsw-fire-watch-panel.js"

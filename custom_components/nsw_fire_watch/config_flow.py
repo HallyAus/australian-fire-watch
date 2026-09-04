@@ -1,4 +1,4 @@
-"""Config and options flows for NSW Fire Watch."""
+"""Config and options flows for Australian Fire Watch."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from .const import (
     CONF_DISTRICT,
     CONF_ENABLE_BOM,
     CONF_EMERGENCY_RADIUS,
+    CONF_JURISDICTION,
     CONF_MONITOR_RADIUS,
     CONF_NAME,
     CONF_NOTIFY_SERVICES,
@@ -25,10 +26,12 @@ from .const import (
     CONF_WATCH_RADIUS,
     CONF_WEATHER_ENTITY,
     CONF_ZONE,
+    CONFIG_ENTRY_VERSION,
     DEFAULT_ADVICE_RADIUS_KM,
     DEFAULT_DISTRICT,
     DEFAULT_ENABLE_BOM,
     DEFAULT_EMERGENCY_RADIUS_KM,
+    DEFAULT_JURISDICTION,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
     DEFAULT_STALE_AFTER_MINUTES,
@@ -38,6 +41,7 @@ from .const import (
     DOMAIN,
     FIRE_DANGER_DISTRICTS,
 )
+from .jurisdictions import JURISDICTION_OPTIONS
 
 
 def _notify_list(value: Any) -> list[str]:
@@ -64,7 +68,17 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             CONF_ZONE, default=defaults.get(CONF_ZONE, DEFAULT_ZONE)
         ): selector.EntitySelector(selector.EntitySelectorConfig(domain="zone")),
         vol.Required(
-            CONF_DISTRICT, default=defaults.get(CONF_DISTRICT, DEFAULT_DISTRICT)
+            CONF_JURISDICTION,
+            default=defaults.get(CONF_JURISDICTION, DEFAULT_JURISDICTION),
+        ): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=list(JURISDICTION_OPTIONS),
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        ),
+        vol.Optional(
+            CONF_DISTRICT,
+            default=defaults.get(CONF_DISTRICT, DEFAULT_DISTRICT),
         ): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=list(FIRE_DANGER_DISTRICTS),
@@ -143,6 +157,13 @@ def _radius_selector(maximum: int) -> selector.NumberSelector:
 
 def _prepare(data: dict[str, Any]) -> dict[str, Any]:
     result = dict(data)
+    result[CONF_JURISDICTION] = str(
+        result.get(CONF_JURISDICTION, DEFAULT_JURISDICTION)
+    ).upper()
+    if result[CONF_JURISDICTION] != "NSW":
+        # District products are NSW-only in this release. Never display an NSW
+        # district rating for a location configured in another jurisdiction.
+        result[CONF_DISTRICT] = ""
     result[CONF_NOTIFY_SERVICES] = _notify_list(result.get(CONF_NOTIFY_SERVICES, []))
     readiness = result.get(CONF_READINESS_ENTITIES, [])
     result[CONF_READINESS_ENTITIES] = (
@@ -179,7 +200,7 @@ def _valid(data: dict[str, Any]) -> bool:
 class FireWatchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Configure a monitored zone without accounts or API keys."""
 
-    VERSION = 1
+    VERSION = CONFIG_ENTRY_VERSION
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -188,7 +209,10 @@ class FireWatchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if _valid(user_input):
                 data = _prepare(user_input)
-                unique = f"{data[CONF_ZONE]}|{data[CONF_DISTRICT]}".casefold()
+                unique = (
+                    f"{data[CONF_ZONE]}|{data[CONF_JURISDICTION]}|"
+                    f"{data.get(CONF_DISTRICT, '')}"
+                ).casefold()
                 await self.async_set_unique_id(unique)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=data[CONF_NAME], data=data)
@@ -199,7 +223,9 @@ class FireWatchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input: dict[str, Any]) -> FlowResult:
         data = _prepare(user_input)
-        unique = f"{data[CONF_ZONE]}|{data[CONF_DISTRICT]}".casefold()
+        unique = (
+            f"{data[CONF_ZONE]}|{data[CONF_JURISDICTION]}|{data.get(CONF_DISTRICT, '')}"
+        ).casefold()
         await self.async_set_unique_id(unique)
         self._abort_if_unique_id_configured(updates=data)
         return self.async_create_entry(title=data[CONF_NAME], data=data)

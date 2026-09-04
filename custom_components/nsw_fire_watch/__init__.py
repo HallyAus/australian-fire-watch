@@ -1,4 +1,4 @@
-"""NSW Fire Watch integration setup, services and bundled panel."""
+"""Australian Fire Watch integration setup, services and bundled dashboard."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ from .const import (
     CONF_DISTRICT,
     CONF_ENABLE_BOM,
     CONF_EMERGENCY_RADIUS,
+    CONF_JURISDICTION,
     CONF_MONITOR_RADIUS,
     CONF_NOTIFY_SERVICES,
     CONF_READINESS_ENTITIES,
@@ -35,10 +36,12 @@ from .const import (
     CONF_WATCH_RADIUS,
     CONF_WEATHER_ENTITY,
     CONF_ZONE,
+    CONFIG_ENTRY_VERSION,
     DEFAULT_ADVICE_RADIUS_KM,
     DEFAULT_DISTRICT,
     DEFAULT_ENABLE_BOM,
     DEFAULT_EMERGENCY_RADIUS_KM,
+    DEFAULT_JURISDICTION,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
     DEFAULT_STALE_AFTER_MINUTES,
@@ -96,8 +99,11 @@ YAML_ENTRY_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_ZONE, default=DEFAULT_ZONE): cv.entity_id,
-        vol.Optional(CONF_DISTRICT, default=DEFAULT_DISTRICT): vol.In(
-            FIRE_DANGER_DISTRICTS
+        vol.Optional(CONF_JURISDICTION, default=DEFAULT_JURISDICTION): vol.In(
+            ("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA")
+        ),
+        vol.Optional(CONF_DISTRICT, default=DEFAULT_DISTRICT): vol.Any(
+            "", vol.In(FIRE_DANGER_DISTRICTS)
         ),
         vol.Optional(CONF_WEATHER_ENTITY): cv.entity_id,
         vol.Optional(CONF_READINESS_ENTITIES, default=[]): _readiness_list,
@@ -177,6 +183,23 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                     DOMAIN, context={"source": "import"}, data=dict(item)
                 )
             )
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Upgrade pre-national entries in place as New South Wales entries."""
+    if entry.version >= CONFIG_ENTRY_VERSION:
+        return True
+    data = dict(entry.data)
+    data.setdefault(CONF_JURISDICTION, DEFAULT_JURISDICTION)
+    district = data.get(CONF_DISTRICT, DEFAULT_DISTRICT)
+    unique_id = f"{data.get(CONF_ZONE, DEFAULT_ZONE)}|NSW|{district}".casefold()
+    hass.config_entries.async_update_entry(
+        entry,
+        data=data,
+        unique_id=unique_id,
+        version=CONFIG_ENTRY_VERSION,
+    )
     return True
 
 
@@ -287,7 +310,9 @@ def _frontend_module_url() -> str:
 def _coordinator(hass: HomeAssistant, entry_id: str) -> FireWatchCoordinator:
     coordinator = hass.data.get(DOMAIN, {}).get(DATA_ENTRIES, {}).get(entry_id)
     if coordinator is None:
-        raise HomeAssistantError(f"NSW Fire Watch entry is not loaded: {entry_id}")
+        raise HomeAssistantError(
+            f"Australian Fire Watch entry is not loaded: {entry_id}"
+        )
     return coordinator
 
 

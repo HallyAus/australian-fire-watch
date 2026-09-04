@@ -11,7 +11,7 @@ from homeassistant.const import UnitOfLength
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import ATTRIBUTION_RFS, DOMAIN
+from .const import DOMAIN
 from .coordinator import FireWatchCoordinator
 from .model import Incident, incident_entity_id
 
@@ -53,7 +53,6 @@ class FireWatchGeoLocation(GeolocationEvent):
     _attr_should_poll = False
     _attr_source = DOMAIN
     _attr_unit_of_measurement = UnitOfLength.KILOMETERS
-    _attr_attribution = ATTRIBUTION_RFS
 
     def __init__(self, coordinator: FireWatchCoordinator, incident_id: str) -> None:
         self.coordinator = coordinator
@@ -82,6 +81,7 @@ class FireWatchGeoLocation(GeolocationEvent):
         self._attr_latitude = incident.latitude
         self._attr_longitude = incident.longitude
         self._attr_icon = "mdi:fire" if incident.is_fire else "mdi:alert-circle"
+        self._attr_attribution = self.coordinator.jurisdiction.attribution
 
     async def async_added_to_hass(self) -> None:
         self._remove_listener = self.coordinator.async_add_listener(self._handle_update)
@@ -117,4 +117,6 @@ class FireWatchGeoLocation(GeolocationEvent):
             if incident.updated_at
             else None,
             "official_url": incident.official_url,
+            "jurisdiction": self.coordinator.jurisdiction.code,
+            "source_name": self.coordinator.jurisdiction.agency,
         }

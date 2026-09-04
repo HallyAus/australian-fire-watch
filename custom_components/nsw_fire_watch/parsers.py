@@ -17,9 +17,14 @@ from .const import OFFICIAL_INCIDENTS_URL
 from .model import Incident, ParsedFeed, normalize_danger, normalize_warning
 
 _TAG_RE = re.compile(r"<[^>]+>")
+_TABLE_FIELD_RE = re.compile(
+    r"<th\b[^>]*>(.*?)</th>\s*<td\b[^>]*>(.*?)</td>",
+    re.IGNORECASE | re.DOTALL,
+)
 _BREAK_RE = re.compile(r"<\s*br\s*/?\s*>", re.IGNORECASE)
 _LABEL_RE = re.compile(
-    r"(?:^|\n)\s*([A-Z][A-Z /_-]{1,40}):\s*(.*?)(?=(?:\n\s*[A-Z][A-Z /_-]{1,40}:)|$)",
+    r"(?:^|\n)\s*([A-Za-z][A-Za-z /_-]{1,40}):\s*(.*?)"
+    r"(?=(?:\n\s*[A-Za-z][A-Za-z /_-]{1,40}:)|$)",
     re.DOTALL,
 )
 
@@ -105,7 +110,10 @@ def _parse_datetime(
 
 
 def _plain_html(value: object) -> str:
-    text = _BREAK_RE.sub("\n", str(value or ""))
+    # Some official feeds XML-escape an entire HTML table. Decode before
+    # stripping tags so those tags do not leak into entity attributes.
+    text = unescape(str(value or ""))
+    text = _BREAK_RE.sub("\n", text)
     text = _TAG_RE.sub(" ", text)
     return "\n".join(
         " ".join(line.split()) for line in unescape(text).splitlines() if line.strip()
@@ -113,11 +121,22 @@ def _plain_html(value: object) -> str:
 
 
 def _description_fields(value: object) -> dict[str, str]:
-    plain = _plain_html(value)
-    return {
-        " ".join(key.replace("_", " ").split()).upper(): " ".join(item.split())
-        for key, item in _LABEL_RE.findall(plain)
+    decoded = unescape(str(value or ""))
+    fields = {
+        " ".join(_plain_html(key).replace("_", " ").split()).upper(): " ".join(
+            _plain_html(item).split()
+        )
+        for key, item in _TABLE_FIELD_RE.findall(decoded)
+        if _plain_html(key) and _plain_html(item)
     }
+    plain = _plain_html(decoded)
+    fields.update(
+        {
+            " ".join(key.replace("_", " ").split()).upper(): " ".join(item.split())
+            for key, item in _LABEL_RE.findall(plain)
+        }
+    )
+    return fields
 
 
 def _bool(value: object) -> bool | None:
@@ -174,7 +193,12 @@ def _centroid(
     )
 
 
-def parse_cap(payload: bytes | str, *, source: str = "NSW RFS CAP") -> ParsedFeed:
+def parse_cap(
+    payload: bytes | str,
+    *,
+    source: str = "NSW RFS CAP",
+    official_url: str = OFFICIAL_INCIDENTS_URL,
+) -> ParsedFeed:
     """Parse CAP-AU alerts embedded in an EDXL distribution."""
     root = _safe_xml(payload)
     generated_at = _parse_datetime(_text(root, "dateTimeSent"))
@@ -259,7 +283,7 @@ def parse_cap(payload: bytes | str, *, source: str = "NSW RFS CAP") -> ParsedFee
                 or fields.get("RESPONSIBLE AGENCY"),
                 instruction=_plain_html(_text(info, "instruction")) or None,
                 description=_plain_html(description) or None,
-                official_url=_text(info, "web") or OFFICIAL_INCIDENTS_URL,
+                official_url=_text(info, "web") or official_url,
                 polygons=polygons,
                 sources=(source,),
             )

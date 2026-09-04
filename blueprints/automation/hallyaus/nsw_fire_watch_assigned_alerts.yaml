@@ -1,11 +1,11 @@
 blueprint:
-  name: NSW Fire Watch - assigned mobile alerts
+  name: Australian Fire Watch - assigned mobile alerts
   description: >-
-    Sends lifecycle-aware NSW Fire Watch alerts to one Home Assistant Companion
+    Sends lifecycle-aware Australian Fire Watch alerts to one Home Assistant Companion
     App device. Create one automation from this blueprint for each person or
     monitored location. Advice notifications are never critical, escalation
     overrides the selected warning threshold, and Emergency Warning alerts
-    cannot be snoozed. This is supplementary to official NSW RFS warnings.
+    cannot be snoozed. This is supplementary to official emergency warnings.
   domain: automation
   author: HallyAus contributors
   source_url: https://github.com/HallyAus/nsw-fire-watch/blob/main/blueprints/automation/hallyaus/nsw_fire_watch_assigned_alerts.yaml
@@ -50,7 +50,7 @@ blueprint:
         assigned_location:
           name: Assigned location filter
           description: >-
-            Optional exact NSW Fire Watch location name or config-entry ID. Leave
+            Optional exact Australian Fire Watch location name or config-entry ID. Leave
             blank to receive events from every configured location.
           default: ""
           selector:
@@ -232,7 +232,7 @@ variables:
       {{ danger.get('district', location_name) }}
     {% else %}
       {{ alert_data.get(
-        'title', incident.get('title', previous.get('title', 'NSW fire information update'))
+        'title', incident.get('title', previous.get('title', 'Fire information update'))
       ) }}
     {% endif %}
   incident_type: >-
@@ -292,7 +292,7 @@ variables:
         'advice': 'Stay up to date.',
         'watch_and_act': 'Start taking action now.',
         'emergency_warning': 'Take action immediately.'
-      }.get(level, 'Check official NSW RFS information.')
+      }.get(level, 'Check the official emergency service information.')
     ) }}
   alert_title: >-
     {% if is_danger and danger.get('total_fire_ban') == true %}
@@ -311,7 +311,7 @@ variables:
       distance_km not in [none, '', 'unknown'] %} · {{ distance_km }} km{% endif %}.
       {{ recommended_action }}
     {% endif %}
-    {% if lifecycle == 'resolved' %} This is not an all-clear; verify with NSW RFS.{% endif %}
+    {% if lifecycle == 'resolved' %} This is not an all-clear; verify with the official emergency service.{% endif %}
   can_ack: "{{ not is_danger and lifecycle not in ['resolved', 'left_radius', 'test'] }}"
   can_snooze: "{{ can_ack and level_rank < 3 }}"
   snooze_minutes: >-
@@ -341,7 +341,7 @@ variables:
   notification_actions: >-
     {% set official = {
       'action': 'URI',
-      'title': 'Official NSW RFS',
+      'title': 'Official source',
       'uri': official_url
     } %}
     {% set dashboard = {
@@ -429,7 +429,7 @@ actions:
         }.get(level, '#607D8B') }}
       ttl: "{{ 0 if is_time_sensitive else 3600 }}"
       priority: "{{ 'high' if is_time_sensitive else 'normal' }}"
-      channel: "{{ 'NSW Fire Watch Critical' if is_critical else 'NSW Fire Watch' }}"
+      channel: "{{ 'Australian Fire Watch Critical' if is_critical else 'Australian Fire Watch' }}"
       importance: "{{ 'max' if is_critical else 'high' if is_time_sensitive else 'default' }}"
       push: >-
         {% if is_critical %}

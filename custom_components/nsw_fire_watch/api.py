@@ -58,7 +58,7 @@ class _FeedState:
 
 
 class OfficialFeedClient:
-    """Fetch documented RFS/BOM URLs with validators and last-good retention."""
+    """Fetch documented official feeds with validators and last-good retention."""
 
     _ACCEPT: Final = "application/cap+xml, application/geo+json, application/json, application/xml, text/xml, application/rss+xml;q=0.9"
 
@@ -83,7 +83,7 @@ class OfficialFeedClient:
 
         headers = {
             "Accept": self._ACCEPT,
-            "User-Agent": f"Home-Assistant-NSW-Fire-Watch/{VERSION}",
+            "User-Agent": f"Home-Assistant-Australian-Fire-Watch/{VERSION}",
         }
         if state.etag:
             headers["If-None-Match"] = state.etag

@@ -1,5 +1,5 @@
 /*
- * NSW Fire Watch for Home Assistant
+ * Australian Fire Watch for Home Assistant
  *
  * Dependency-free frontend bundle. It registers:
  *   - <nsw-fire-watch-panel> for the integration-owned sidebar panel
@@ -12,8 +12,6 @@
 const DOMAIN = "nsw_fire_watch";
 const DEFAULT_RFS_URL =
   "https://www.rfs.nsw.gov.au/fire-information/fires-near-me";
-const RFS_ATTRIBUTION =
-  "© State of New South Wales (NSW Rural Fire Service). For current information go to www.rfs.nsw.gov.au.";
 const DEFAULT_RATINGS_URL =
   "https://www.rfs.nsw.gov.au/plan-and-prepare/fire-danger-ratings";
 const DEFAULT_BOM_URL = "https://www.bom.gov.au/nsw/warnings/";
@@ -24,66 +22,22 @@ const BOM_ATTRIBUTION_URL =
 const BOM_ATTRIBUTION_IMAGE =
   "data:image/png;base64,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";
 const DEFAULT_GEO_SOURCE = "nsw_rural_fire_service_feed";
-const FRONTEND_BASE = "/api/nsw_fire_watch/frontend";
-const MAPLIBRE_VERSION = "5.24.0";
-const MAPLIBRE_SCRIPT = `${FRONTEND_BASE}/vendor/maplibre-gl-csp.js?v=${MAPLIBRE_VERSION}`;
-const MAPLIBRE_WORKER = `${FRONTEND_BASE}/vendor/maplibre-gl-csp-worker.js?v=${MAPLIBRE_VERSION}`;
-const MAPLIBRE_CSS = `${FRONTEND_BASE}/vendor/maplibre-gl.css?v=${MAPLIBRE_VERSION}`;
-const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-const OPENFREEMAP_URL = "https://openfreemap.org/";
 const MAP_DEFAULT_ZOOM = 11;
-const MAP_MIN_ZOOM = 9;
-
-let mapLibrePromise = null;
-
-const configureMapLibreWorker = (maplibregl) => {
-  if (!maplibregl) return;
-  if (typeof maplibregl.setWorkerUrl === "function") {
-    maplibregl.setWorkerUrl(MAPLIBRE_WORKER);
-  } else {
-    maplibregl.workerUrl = MAPLIBRE_WORKER;
-  }
-};
-
-const loadMapLibre = () => {
-  if (window.maplibregl) {
-    configureMapLibreWorker(window.maplibregl);
-    return Promise.resolve(window.maplibregl);
-  }
-  if (mapLibrePromise) return mapLibrePromise;
-
-  mapLibrePromise = new Promise((resolve, reject) => {
-    const finish = () => {
-      if (!window.maplibregl) {
-        fail(new Error("MapLibre did not register its browser API"));
-        return;
-      }
-      configureMapLibreWorker(window.maplibregl);
-      resolve(window.maplibregl);
-    };
-    const fail = (error = null) => {
-      document
-        .querySelector("script[data-nsw-fire-watch-maplibre]")
-        ?.remove();
-      mapLibrePromise = null;
-      reject(error || new Error("The local MapLibre bundle could not be loaded"));
-    };
-    const existing = document.querySelector("script[data-nsw-fire-watch-maplibre]");
-    if (existing) {
-      existing.addEventListener("load", finish, { once: true });
-      existing.addEventListener("error", fail, { once: true });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = MAPLIBRE_SCRIPT;
-    script.async = true;
-    script.dataset.nswFireWatchMaplibre = MAPLIBRE_VERSION;
-    script.addEventListener("load", finish, { once: true });
-    script.addEventListener("error", () => fail(), { once: true });
-    document.head.append(script);
-  });
-  return mapLibrePromise;
-};
+const FIRE_WATCH_CARD_TAG = "nsw-fire-watch-card";
+const FIRE_WATCH_CARD_TYPE = `custom:${FIRE_WATCH_CARD_TAG}`;
+const FIRE_WATCH_RECOVERY_DELAYS = Object.freeze([
+  0,
+  50,
+  250,
+  750,
+  2100,
+  2600,
+  4000,
+]);
+const FIRE_WATCH_RECOVERY_FLAG = Symbol.for(
+  "nsw-fire-watch-card.recovery-scheduled",
+);
+const fireWatchRecoveryAttempts = new WeakSet();
 
 const WARNING_WEIGHT = Object.freeze({
   emergency_warning: 4,
@@ -722,9 +676,15 @@ const normalizeModel = (hass, config = {}) => {
       attributes.zone_name,
       attributes.friendly_name,
       config.title,
-      "NSW Fire Watch",
+      "Australian Fire Watch",
     ),
     state: stateStatus,
+    integrationName: firstPresent(
+      attributes.integration_name,
+      "Australian Fire Watch",
+    ),
+    jurisdiction: firstPresent(attributes.jurisdiction, "NSW"),
+    jurisdictionName: firstPresent(attributes.jurisdiction_name, "New South Wales"),
     officialWarning,
     summaryText: firstPresent(attributes.summary, attributes.status_summary),
     recommendedAction: firstPresent(
@@ -785,7 +745,7 @@ const normalizeModel = (hass, config = {}) => {
       sourceName: firstPresent(
         feedAttributes.source_name,
         attributes.source_name,
-        "NSW Rural Fire Service",
+        firstPresent(attributes.official_source_name, "Official emergency service"),
       ),
       officialUrl: safeUrl(
         firstPresent(
@@ -794,6 +754,12 @@ const normalizeModel = (hass, config = {}) => {
           attributes.source_url,
         ),
         DEFAULT_RFS_URL,
+      ),
+      attribution: firstPresent(
+        feedAttributes.attribution,
+        attributes.attribution,
+        attributes.official_source_name,
+        "Official emergency service",
       ),
       geoLocationSource: firstPresent(
         config.geo_location_source,
@@ -1291,7 +1257,7 @@ const STYLES = `
 
   .map-host { position: relative; height: 330px; min-height: 330px; overflow: hidden; border: 1px solid var(--fw-border); border-radius: 14px; background: rgba(0,0,0,.1); }
   .map-host > * { display: block; min-height: 330px; }
-  .map-host > .maplibregl-map { width: 100%; height: 100%; min-height: 0; color: #111827; font: inherit; }
+  .map-host > * { width: 100%; }
   .map-fallback { min-height: 330px; display: grid; place-items: center; padding: 24px; text-align: center; }
   .map-fallback p { margin-bottom: 10px; }
   .map-fallback .button-link { margin: 4px; }
@@ -1316,13 +1282,9 @@ const STYLES = `
   .map-marker.planned { width: 24px; height: 24px; background: #16804a; }
   .map-marker.home { width: 28px; height: 28px; border-radius: 8px; background: #1565c0; transform: rotate(45deg); cursor: default; }
   .map-marker.home::after { transform: rotate(-45deg); background: white; }
-  .maplibregl-popup { max-width: min(280px, calc(100vw - 48px)) !important; }
-  .maplibregl-popup-content { padding: 13px 14px; border-radius: 12px; color: #111827; font: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
   .map-popup-title { margin: 0 0 5px; font-size: .94rem; line-height: 1.25; }
   .map-popup-meta { margin: 2px 0; color: #475569; font-size: .78rem; }
   .map-popup-link { display: inline-block; min-height: 36px; margin-top: 7px; color: #0b57a4; font-size: .8rem; font-weight: 800; }
-  .maplibregl-ctrl-group { overflow: hidden; border-radius: 9px; }
-  .maplibregl-ctrl button { min-width: 36px; min-height: 36px; }
 
   .health-grid { display: grid; grid-template-columns: 1fr; gap: 9px; }
   .health-item { padding: 11px; border: 1px solid var(--fw-border); border-radius: 12px; background: rgba(0,0,0,.08); }
@@ -1745,7 +1707,7 @@ const deriveHero = (model) => {
     summary = "The last known information is retained below and may no longer be current.";
   }
   if (!summary && warning === "unknown" && model.state !== "no_current_warning") {
-    summary = "An official warning level was not supplied. Check NSW RFS before acting.";
+    summary = "An official warning level was not supplied. Check the official emergency service before acting.";
   }
   if (!summary) {
     summary =
@@ -1767,7 +1729,7 @@ const renderHeroControls = (model, hero, busy) => {
   const controls = [
     `<a class="button-link ${warning === "emergency_warning" ? "critical" : ""}" href="${escapeHtml(
       model.feed.officialUrl,
-    )}" target="_blank" rel="noopener noreferrer">Official RFS ${icon("external")}</a>`,
+    )}" target="_blank" rel="noopener noreferrer">Official source ${icon("external")}</a>`,
   ];
   let reminderOptions = "";
 
@@ -1848,7 +1810,7 @@ const renderCommandNav = (model, title) => {
         ${icon("home")} <span>Home</span>
       </a>
       <div class="command-nav-context">
-        <span>${escapeHtml(title || "NSW Fire Watch")}</span>
+        <span>${escapeHtml(title || model.integrationName || "Australian Fire Watch")}</span>
         <strong>${escapeHtml(model.locationName)}</strong>
       </div>
       <span class="nav-feed-status ${model.feed.stale ? "delayed" : ""}" title="${escapeHtml(
@@ -2051,7 +2013,7 @@ const renderCompact = (model, title, showMap = false) => {
 
   const feedMessage = model.feed.stale
     ? model.feed.message ||
-      "Last known information is retained and may no longer be current. Check NSW RFS."
+      "Last known information is retained and may no longer be current. Check the official emergency service."
     : model.feed.message;
 
   return `
@@ -2059,7 +2021,7 @@ const renderCompact = (model, title, showMap = false) => {
       <article class="compact-card" aria-labelledby="compact-status-heading">
         <header class="compact-status ${hero.severity}">
           <div class="compact-kicker-row">
-            <span class="eyebrow">${escapeHtml(title || "NSW Fire Watch")}</span>
+            <span class="eyebrow">${escapeHtml(title || model.integrationName || "Australian Fire Watch")}</span>
             <span class="compact-freshness" title="${escapeHtml(
               formatAbsolute(model.feed.lastSuccessfulUpdate),
             )}">${freshness}</span>
@@ -2116,7 +2078,7 @@ const renderCompact = (model, title, showMap = false) => {
           <a class="button-link primary" href="/nsw-fire-watch">Open command centre</a>
           <a class="button-link" href="${escapeHtml(
             model.feed.officialUrl,
-          )}" target="_blank" rel="noopener noreferrer">Official RFS ${icon(
+          )}" target="_blank" rel="noopener noreferrer">Official source ${icon(
             "external",
           )}</a>
         </nav>
@@ -2124,7 +2086,7 @@ const renderCompact = (model, title, showMap = false) => {
         <p class="compact-attribution"><a href="${escapeHtml(
           model.feed.officialUrl,
         )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-          RFS_ATTRIBUTION,
+          model.feed.attribution,
         )}</a></p>
       </article>
     </main>
@@ -2219,7 +2181,7 @@ const renderReadiness = (model) => {
         <p class="subtle small">Use your own bush fire survival plan. This dashboard does not decide whether it is safe to stay or leave.</p>
         <ul class="readiness-list">${items}</ul>
         <div class="incident-actions">
-          <a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">NSW RFS preparation guidance ${icon(
+          <a class="button-link" href="${escapeHtml(model.feed.officialUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(model.feed.sourceName)} preparation guidance ${icon(
             "external",
           )}</a>
         </div>
@@ -2283,19 +2245,8 @@ const renderPlannedBurns = (model) => {
   `;
 };
 
-const renderMapCredits = () => `
-  <p class="map-provider-credit">
-    Map: <a href="${OPENFREEMAP_URL}" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>
-    · © <a href="https://openmaptiles.org/" target="_blank" rel="noopener noreferrer">OpenMapTiles</a>
-    · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>
-  </p>
-`;
-
-const renderMapStylesheet = () =>
-  `<link id="maplibre-css" rel="stylesheet" href="${MAPLIBRE_CSS}">`;
-
 const renderMapFallback = (
-  message = "Loading the keyless incident map…",
+  message = "Loading the Home Assistant incident map…",
   officialUrl = DEFAULT_RFS_URL,
 ) => `
   <div class="map-fallback"><div>
@@ -2310,12 +2261,11 @@ const renderCompactMap = () => `
   <section class="compact-map" aria-labelledby="compact-map-heading">
     <div class="compact-map-heading">
       <strong id="compact-map-heading">Incidents near home</strong>
-      <span>Local view · zoom ${MAP_DEFAULT_ZOOM}</span>
+      <span>Home Assistant map · local view</span>
     </div>
-    <div id="incident-map" class="map-host compact-map-host" aria-label="NSW RFS incidents near the monitored location">
+    <div id="incident-map" class="map-host compact-map-host" aria-label="Fire incidents near the monitored location">
       ${renderMapFallback()}
     </div>
-    ${renderMapCredits()}
   </section>
 `;
 
@@ -2323,10 +2273,9 @@ const renderMap = () => `
   <section class="surface" aria-labelledby="map-heading">
     <div class="section-heading"><h2 id="map-heading">Incident map</h2>${icon("map")}</div>
     <p class="subtle small">Centred on your monitored location. Markers show reported locations, not fire spread, travel safety, or evacuation routes.</p>
-    <div id="incident-map" class="map-host" aria-label="NSW RFS incident map">
+    <div id="incident-map" class="map-host" aria-label="Official fire incident map">
       ${renderMapFallback()}
     </div>
-    ${renderMapCredits()}
   </section>
 `;
 
@@ -2375,18 +2324,13 @@ const renderHealth = (model, busy) => {
         <div class="official-links">
           <a class="button-link" href="${escapeHtml(
             model.feed.officialUrl,
-          )}" target="_blank" rel="noopener noreferrer">NSW RFS Fires Near Me ${icon("external")}</a>
-          <a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">Fire danger ratings ${icon(
-            "external",
-          )}</a>
-          <a class="button-link" href="${DEFAULT_BOM_URL}" target="_blank" rel="noopener noreferrer">BOM NSW warnings ${icon(
-            "external",
-          )}</a>
+          )}" target="_blank" rel="noopener noreferrer">Open ${escapeHtml(model.feed.sourceName)} ${icon("external")}</a>
+          ${model.jurisdiction === "NSW" ? `<a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">Fire danger ratings ${icon("external")}</a><a class="button-link" href="${DEFAULT_BOM_URL}" target="_blank" rel="noopener noreferrer">BOM NSW warnings ${icon("external")}</a>` : ""}
         </div>
         <p class="source-attribution"><a href="${escapeHtml(
           model.feed.officialUrl,
         )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-          RFS_ATTRIBUTION,
+          model.feed.attribution,
         )}</a></p>
         <details>
           <summary>Test assigned alert delivery</summary>
@@ -2398,7 +2342,7 @@ const renderHealth = (model, busy) => {
             <button class="button" type="button" data-action="test-alert" data-level="emergency_warning" ${busy ? "disabled" : ""}>Test Emergency Warning</button>
           </div>
         </details>
-        <p class="disclaimer"><strong>Supplementary information only.</strong> Do not rely on Home Assistant as your only warning channel. Follow NSW RFS, BOM, emergency services, local radio, and the Fires Near Me NSW app. Warnings may not precede a fast-moving fire. In an emergency, call Triple Zero (000).</p>
+        <p class="disclaimer"><strong>Supplementary information only.</strong> Do not rely on Home Assistant as your only warning channel. Follow ${escapeHtml(model.feed.sourceName)}, your official emergency app, emergency services, and local radio. Warnings may not precede a fast-moving fire. In an emergency, call Triple Zero (000).</p>
       </div>
     </details>
   `;
@@ -2413,8 +2357,6 @@ class NSWFireWatchBase extends HTMLElement {
     this._panel = null;
     this._signature = null;
     this._incidentMap = null;
-    this._mapMarkers = [];
-    this._mapLoadCancel = null;
     this._renderToken = 0;
     this._showAllIncidents = false;
     this._busy = false;
@@ -2458,6 +2400,7 @@ class NSWFireWatchBase extends HTMLElement {
       signature = `${Date.now()}`;
     }
     if (signature === this._signature) {
+      if (this._incidentMap) this._incidentMap.hass = value;
       return;
     }
     this._signature = signature;
@@ -2489,7 +2432,7 @@ class NSWFireWatchBase extends HTMLElement {
 
   setConfig(config) {
     if (!config || typeof config !== "object") {
-      throw new Error("NSW Fire Watch card configuration must be an object.");
+      throw new Error("Australian Fire Watch card configuration must be an object.");
     }
     this._config = { ...config };
     this._signature = null;
@@ -2513,13 +2456,13 @@ class NSWFireWatchBase extends HTMLElement {
     if (!model.configured) {
       if (compact) {
         const setupMessage = model.connected
-          ? "No NSW Fire Watch summary entity is available yet. Finish configuring the integration, then reload this page."
+          ? "No Australian Fire Watch summary entity is available yet. Finish configuring the integration, then reload this page."
           : "Connecting to Home Assistant…";
         this.shadowRoot.innerHTML = `
           <style>${STYLES}</style>
           <main class="compact-shell">
             <section class="compact-card compact-setup" aria-labelledby="setup-heading">
-              <span class="eyebrow">NSW Fire Watch</span>
+              <span class="eyebrow">Australian Fire Watch</span>
               <h1 id="setup-heading">Finish integration setup</h1>
               <p>${escapeHtml(setupMessage)}</p>
               <a class="button-link primary" href="/config/integrations/integration/nsw_fire_watch">Open integration settings</a>
@@ -2534,18 +2477,16 @@ class NSWFireWatchBase extends HTMLElement {
         <main class="app-shell">
           <section class="surface setup" aria-labelledby="setup-heading">
             ${icon("fire")}
-            <span class="eyebrow">NSW Fire Watch</span>
+            <span class="eyebrow">Australian Fire Watch</span>
             <h1 id="setup-heading">Finish integration setup</h1>
             <p>${
               model.connected
-                ? "No NSW Fire Watch summary entity is available yet. Add or finish configuring the integration, then reload this page."
+                ? "No Australian Fire Watch summary entity is available yet. Add or finish configuring the integration, then reload this page."
                 : "Connecting to Home Assistant…"
             }</p>
             <p class="subtle">If you have multiple monitored locations, set the card’s <code class="setup-code">entity: sensor.nsw_fire_watch_…</code> option.</p>
-            <a class="button-link primary" href="${DEFAULT_RFS_URL}" target="_blank" rel="noopener noreferrer">Open official NSW RFS information ${icon(
-              "external",
-            )}</a>
-            <p class="disclaimer"><strong>Do not treat missing dashboard data as safe.</strong> Continue to use official warnings and the Fires Near Me NSW app.</p>
+            <a class="button-link primary" href="/config/integrations/integration/nsw_fire_watch">Configure Australian Fire Watch</a>
+            <p class="disclaimer"><strong>Do not treat missing dashboard data as safe.</strong> Continue to use your state or territory’s official warnings and emergency app.</p>
           </section>
         </main>
       `;
@@ -2555,7 +2496,6 @@ class NSWFireWatchBase extends HTMLElement {
     if (compact) {
       const showMap = this._config.show_map === true;
       this.shadowRoot.innerHTML = `
-        ${showMap ? renderMapStylesheet() : ""}
         <style>${STYLES}</style>
         ${renderCompact(model, this._config.title, showMap)}
       `;
@@ -2572,11 +2512,10 @@ class NSWFireWatchBase extends HTMLElement {
       : `<div class="visually-hidden" aria-live="polite"></div>`;
 
     this.shadowRoot.innerHTML = `
-      ${showMap ? renderMapStylesheet() : ""}
       <style>${STYLES}</style>
       <main class="app-shell">
         <h1 class="visually-hidden">${escapeHtml(
-          this._config.title || "NSW Fire Watch command centre",
+          this._config.title || "Australian Fire Watch command centre",
         )}</h1>
         ${renderCommandNav(model, this._config.title)}
         ${notice}
@@ -2598,103 +2537,14 @@ class NSWFireWatchBase extends HTMLElement {
   }
 
   _destroyIncidentMap() {
-    if (this._mapLoadCancel) {
-      this._mapLoadCancel();
-      this._mapLoadCancel = null;
-    }
-    for (const marker of this._mapMarkers || []) {
-      try {
-        marker.remove();
-      } catch (_error) {
-        // A map teardown can already have detached its markers.
-      }
-    }
-    this._mapMarkers = [];
-    if (this._incidentMap) {
-      try {
-        this._incidentMap.remove();
-      } catch (_error) {
-        // WebGL loss during Companion shutdown must not break the dashboard.
-      }
-    }
     this._incidentMap = null;
-  }
-
-  async _waitForMapStylesheet(token) {
-    const stylesheet = this.shadowRoot.getElementById("maplibre-css");
-    if (!stylesheet) throw new Error("MapLibre styles are unavailable");
-    if (stylesheet.sheet) return;
-    await new Promise((resolve, reject) => {
-      const timeout = window.setTimeout(
-        () => reject(new Error("MapLibre styles timed out")),
-        8_000,
-      );
-      stylesheet.addEventListener(
-        "load",
-        () => {
-          window.clearTimeout(timeout);
-          resolve();
-        },
-        { once: true },
-      );
-      stylesheet.addEventListener(
-        "error",
-        () => {
-          window.clearTimeout(timeout);
-          reject(new Error("MapLibre styles could not be loaded"));
-        },
-        { once: true },
-      );
-    });
-    if (token !== this._renderToken) throw new Error("Map render superseded");
-  }
-
-  _mapCentre(model) {
-    if (validCoordinates(model.monitoredLatitude, model.monitoredLongitude)) {
-      return [model.monitoredLongitude, model.monitoredLatitude];
-    }
-    const zone = this._hass?.states?.[model.zoneEntityId];
-    const latitude = asNumber(zone?.attributes?.latitude ?? this._hass?.config?.latitude);
-    const longitude = asNumber(
-      zone?.attributes?.longitude ?? this._hass?.config?.longitude,
-    );
-    return validCoordinates(latitude, longitude) ? [longitude, latitude] : null;
-  }
-
-  _incidentPopup(maplibregl, incident) {
-    const content = document.createElement("div");
-    const heading = document.createElement("h3");
-    heading.className = "map-popup-title";
-    heading.textContent = incident.title;
-    content.append(heading);
-
-    for (const value of [
-      warningLabel(incident.warning),
-      controlLabel(incident.control),
-      `${incident.type} · ${formatDistance(incident.distanceKm)}`,
-    ]) {
-      const line = document.createElement("p");
-      line.className = "map-popup-meta";
-      line.textContent = value;
-      content.append(line);
-    }
-
-    const officialUrl = safeUrl(incident.officialUrl, DEFAULT_RFS_URL);
-    const link = document.createElement("a");
-    link.className = "map-popup-link";
-    link.href = officialUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "Open official incident information";
-    content.append(link);
-    return new maplibregl.Popup({ closeButton: true, offset: 18 }).setDOMContent(content);
   }
 
   _showMapFailure(host, model) {
     this._destroyIncidentMap();
     if (!host?.isConnected) return;
     host.innerHTML = renderMapFallback(
-      "The keyless map is unavailable on this device. Incident status and distance remain available above.",
+      "The Home Assistant map is unavailable on this device. Incident status and distance remain available above.",
       model.feed.officialUrl,
     );
   }
@@ -2703,112 +2553,40 @@ class NSWFireWatchBase extends HTMLElement {
     const host = this.shadowRoot.getElementById("incident-map");
     if (!host) return;
     try {
-      const [maplibregl] = await Promise.all([
-        loadMapLibre(),
-        this._waitForMapStylesheet(token),
-      ]);
-      if (token !== this._renderToken || !host.isConnected) return;
-      if (
-        typeof maplibregl.supported === "function" &&
-        !maplibregl.supported({ failIfMajorPerformanceCaveat: false })
-      ) {
-        throw new Error("WebGL mapping is unsupported");
+      if (typeof window.loadCardHelpers !== "function") {
+        throw new Error("Home Assistant card helpers are unavailable");
       }
-      const centre = this._mapCentre(model);
-      if (!centre) throw new Error("The monitored location has no coordinates");
-
-      host.replaceChildren();
-      const map = new maplibregl.Map({
-        container: host,
-        style: OPENFREEMAP_STYLE,
-        center: centre,
-        zoom: MAP_DEFAULT_ZOOM,
-        minZoom: MAP_MIN_ZOOM,
-        maxZoom: 18,
-        attributionControl: false,
-        cooperativeGestures: true,
-      });
-      this._incidentMap = map;
-      map.addControl(
-        new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }),
-        "top-left",
-      );
-
-      await new Promise((resolve, reject) => {
-        let settled = false;
-        let timer = null;
-        const settle = (callback, value) => {
-          if (settled) return;
-          settled = true;
-          if (timer) window.clearTimeout(timer);
-          timer = null;
-          if (this._mapLoadCancel === cancel) this._mapLoadCancel = null;
-          callback(value);
-        };
-        const cancel = () => {
-          const error = new Error("Map render cancelled");
-          error.name = "AbortError";
-          settle(reject, error);
-        };
-        this._mapLoadCancel = cancel;
-        timer = window.setTimeout(
-          () => settle(reject, new Error("The map style timed out")),
-          15_000,
-        );
-        map.once("load", () => settle(resolve));
-        map.once("error", (event) => {
-          if (map.loaded()) return;
-          settle(
-            reject,
-            event?.error || new Error("The map style could not be loaded"),
-          );
-        });
-      });
+      const helpers = await window.loadCardHelpers();
       if (token !== this._renderToken || !host.isConnected) return;
-
-      const homeMarker = document.createElement("span");
-      homeMarker.className = "map-marker home";
-      homeMarker.setAttribute("aria-label", `${model.locationName} monitored location`);
-      homeMarker.title = `${model.locationName} monitored location`;
-      this._mapMarkers.push(
-        new maplibregl.Marker({ element: homeMarker, anchor: "center" })
-          .setLngLat(centre)
-          .addTo(map),
-      );
-
-      const markerIncidents = [];
+      const entities = [];
+      if (model.zoneEntityId) {
+        entities.push({ entity: model.zoneEntityId, focus: true });
+      }
       const seenIncidentIds = new Set();
       for (const incident of [
         model.priorityIncident,
         ...model.incidents,
         ...model.plannedBurns,
       ]) {
-        if (!incident || seenIncidentIds.has(incident.id)) continue;
-        seenIncidentIds.add(incident.id);
-        markerIncidents.push(incident);
+        if (!incident?.entityId || seenIncidentIds.has(incident.entityId)) continue;
+        seenIncidentIds.add(incident.entityId);
+        entities.push({ entity: incident.entityId, focus: false });
       }
-      for (const incident of markerIncidents) {
-        if (!validCoordinates(incident.latitude, incident.longitude)) continue;
-        const markerElement = document.createElement("button");
-        markerElement.type = "button";
-        markerElement.className = `map-marker ${
-          incident.isPlanned ? "planned" : `warning-${warningKey(incident.warning)}`
-        }`;
-        markerElement.setAttribute(
-          "aria-label",
-          `${incident.title}, ${formatDistance(incident.distanceKm)}`,
-        );
-        markerElement.title = incident.title;
-        const marker = new maplibregl.Marker({ element: markerElement, anchor: "center" })
-          .setLngLat([incident.longitude, incident.latitude])
-          .setPopup(this._incidentPopup(maplibregl, incident))
-          .addTo(map);
-        this._mapMarkers.push(marker);
-      }
-      map.resize();
+      const mapCard = helpers.createCardElement({
+        type: "map",
+        entities,
+        default_zoom: MAP_DEFAULT_ZOOM,
+        auto_fit: false,
+        fit_zones: false,
+        hours_to_show: 0,
+        cluster: true,
+      });
+      mapCard.hass = this._hass;
+      host.replaceChildren(mapCard);
+      this._incidentMap = mapCard;
     } catch (_error) {
-      if (_error?.name === "AbortError" || token !== this._renderToken) return;
-      console.warn("NSW Fire Watch keyless map unavailable", _error);
+      if (token !== this._renderToken) return;
+      console.warn("Australian Fire Watch native map unavailable", _error);
       this._showMapFailure(host, model);
     }
   }
@@ -2982,7 +2760,7 @@ class NSWFireWatchCardEditor extends HTMLElement {
       </label>
       <label>Dashboard title
         <input id="title" type="text" value="${escapeHtml(
-          this._config.title || "NSW Fire Watch",
+          this._config.title || "Australian Fire Watch",
         )}" />
       </label>
       <label class="check"><input id="compact" type="checkbox" ${
@@ -3006,7 +2784,7 @@ class NSWFireWatchCardEditor extends HTMLElement {
     const config = {
       ...this._config,
       ...(entity ? { entity } : {}),
-      title: title || "NSW Fire Watch",
+      title: title || "Australian Fire Watch",
       compact: this.shadowRoot.getElementById("compact")?.checked === true,
       show_map: this.shadowRoot.getElementById("show-map")?.checked !== false,
       show_readiness:
@@ -3029,7 +2807,7 @@ class NSWFireWatchDashboardStrategy extends HTMLElement {
 
   static getCreateSuggestions(_hass) {
     return {
-      title: "NSW Fire Watch",
+      title: "Australian Fire Watch",
       icon: "mdi:fire-alert",
     };
   }
@@ -3042,7 +2820,7 @@ class NSWFireWatchDashboardStrategy extends HTMLElement {
     const cardConfig = {
       type: "custom:nsw-fire-watch-card",
       ...(entity ? { entity } : {}),
-      title: firstPresent(config.card_title, "NSW Fire Watch"),
+      title: firstPresent(config.card_title, "Australian Fire Watch"),
       show_map: config.show_map !== false,
       show_readiness: config.show_readiness !== false,
       ...(config.zone_entity ? { zone_entity: config.zone_entity } : {}),
@@ -3054,7 +2832,7 @@ class NSWFireWatchDashboardStrategy extends HTMLElement {
         : {}),
     };
     return {
-      title: firstPresent(config.title, "NSW Fire Watch"),
+      title: firstPresent(config.title, "Australian Fire Watch"),
       views: [
         {
           title: "Fire Watch",
@@ -3068,12 +2846,99 @@ class NSWFireWatchDashboardStrategy extends HTMLElement {
   }
 }
 
+const elementTagName = (element) =>
+  String(element?.localName || element?.tagName || "").toLowerCase();
+
+const composedElements = (root) => {
+  const elements = [];
+  const visited = new Set();
+  const pending = [root];
+  for (let index = 0; index < pending.length; index += 1) {
+    const current = pending[index];
+    if (!current || visited.has(current)) continue;
+    visited.add(current);
+    if (elementTagName(current)) elements.push(current);
+    if (current.shadowRoot) pending.push(current.shadowRoot);
+    if (current.children) pending.push(...Array.from(current.children));
+  }
+  return elements;
+};
+
+const isMissingFireWatchElementError = (element) => {
+  if (elementTagName(element) !== "hui-error-card") return false;
+  const config = element._config || element.config || {};
+  const rawMessage = config.message ?? config.error ?? element.message;
+  const message = rawMessage instanceof Error ? rawMessage.message : rawMessage;
+  return /^custom element (?:doesn't exist|not found): nsw-fire-watch-card\.?$/i.test(
+    String(message || "").trim(),
+  );
+};
+
+const dispatchFireWatchRebuild = (element) => {
+  if (!element || typeof element.dispatchEvent !== "function") return false;
+  try {
+    element.dispatchEvent(
+      new CustomEvent("ll-rebuild", { bubbles: true, composed: true }),
+    );
+    return true;
+  } catch (error) {
+    console.warn("Australian Fire Watch could not request a Lovelace card rebuild", error);
+    return false;
+  }
+};
+
+const recoverFailedFireWatchCards = (root = document) => {
+  const elements = composedElements(root);
+  let recovered = 0;
+  for (const wrapper of elements) {
+    if (elementTagName(wrapper) !== "hui-card") continue;
+    const config = wrapper.config || wrapper._config || {};
+    const errorElement = wrapper._element;
+    if (
+      config.type !== FIRE_WATCH_CARD_TYPE ||
+      !isMissingFireWatchElementError(errorElement) ||
+      fireWatchRecoveryAttempts.has(wrapper) ||
+      fireWatchRecoveryAttempts.has(errorElement)
+    ) {
+      continue;
+    }
+    if (dispatchFireWatchRebuild(errorElement)) {
+      fireWatchRecoveryAttempts.add(wrapper);
+      fireWatchRecoveryAttempts.add(errorElement);
+      recovered += 1;
+    }
+  }
+  for (const errorElement of elements) {
+    if (
+      !isMissingFireWatchElementError(errorElement) ||
+      fireWatchRecoveryAttempts.has(errorElement) ||
+      errorElement.isConnected === false
+    ) {
+      continue;
+    }
+    if (dispatchFireWatchRebuild(errorElement)) {
+      fireWatchRecoveryAttempts.add(errorElement);
+      recovered += 1;
+    }
+  }
+  return recovered;
+};
+
+const scheduleFireWatchCardRecovery = () => {
+  if (window[FIRE_WATCH_RECOVERY_FLAG]) return;
+  window[FIRE_WATCH_RECOVERY_FLAG] = true;
+  for (const delay of FIRE_WATCH_RECOVERY_DELAYS) {
+    window.setTimeout(() => recoverFailedFireWatchCards(), delay);
+  }
+};
+
 const defineElement = (name, constructor) => {
   if (!customElements.get(name)) customElements.define(name, constructor);
 };
 
 defineElement("nsw-fire-watch-panel", NSWFireWatchPanel);
-defineElement("nsw-fire-watch-card", NSWFireWatchCard);
+defineElement(FIRE_WATCH_CARD_TAG, NSWFireWatchCard);
+scheduleFireWatchCardRecovery();
 defineElement("nsw-fire-watch-card-editor", NSWFireWatchCardEditor);
 defineElement("ll-strategy-dashboard-nsw-fire-watch", NSWFireWatchDashboardStrategy);
 
@@ -3081,9 +2946,9 @@ window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "nsw-fire-watch-card")) {
   window.customCards.push({
     type: "nsw-fire-watch-card",
-    name: "NSW Fire Watch",
+    name: "Australian Fire Watch",
     description:
-      "Mobile-first NSW RFS fire danger, incident, readiness, and alert dashboard.",
+      "Mobile-first Australian fire incident, readiness, and alert dashboard.",
     preview: true,
     documentationURL: "https://github.com/hallyaus/nsw-fire-watch",
   });
@@ -3094,15 +2959,15 @@ if (!window.customStrategies.some((strategy) => strategy.type === "nsw-fire-watc
   window.customStrategies.push({
     type: "nsw-fire-watch",
     strategyType: "dashboard",
-    name: "NSW Fire Watch",
+    name: "Australian Fire Watch",
     description:
-      "A severity-first fire-season dashboard for NSW RFS incidents and assigned alerts.",
+      "A severity-first dashboard for official Australian fire incidents and assigned alerts.",
     documentationURL: "https://github.com/hallyaus/nsw-fire-watch",
   });
 }
 
 console.info(
-  "%c NSW FIRE WATCH %c frontend loaded",
+  "%c AUSTRALIAN FIRE WATCH %c frontend loaded",
   "background:#b91c1c;color:white;font-weight:800;padding:3px 6px;border-radius:4px 0 0 4px",
   "background:#17212b;color:white;padding:3px 6px;border-radius:0 4px 4px 0",
 );

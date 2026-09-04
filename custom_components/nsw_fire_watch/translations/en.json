@@ -1,14 +1,15 @@
 {
-  "title": "NSW Fire Watch",
+  "title": "Australian Fire Watch",
   "config": {
     "step": {
       "user": {
-        "title": "Monitor a NSW location",
-        "description": "Uses documented anonymous NSW RFS feeds. BOM enrichment is optional and subject to BOM terms. This is supplementary to official warning channels.",
+        "title": "Monitor an Australian location",
+        "description": "Select the state or territory containing this zone. Uses anonymous official emergency-service feeds and remains supplementary to official warning channels.",
         "data": {
           "name": "Location name",
           "zone": "Home Assistant zone",
-          "fire_danger_district": "NSW fire weather district",
+          "jurisdiction": "State or territory",
+          "fire_danger_district": "NSW fire weather district (NSW only)",
           "weather_entity": "Weather entity (optional context only)",
           "readiness_entities": "Household readiness checkboxes (optional)",
           "notify_services": "Notify services (optional, one notify.* service per line)",
@@ -18,7 +19,7 @@
           "advice_radius_km": "Advice alert radius",
           "unclassified_fire_radius_km": "Unclassified active-fire alert radius",
           "stale_after_minutes": "Mark incident feed stale after",
-          "enable_bom_enrichment": "Enable BOM FBI and land-warning enrichment"
+          "enable_bom_enrichment": "Enable NSW BOM FBI and land-warning enrichment"
         }
       }
     },
@@ -26,18 +27,19 @@
       "invalid_settings": "Use fully-qualified notify.* services and make the monitoring radius at least as large as every alert radius."
     },
     "abort": {
-      "already_configured": "This zone and fire weather district are already configured."
+      "already_configured": "This state or territory and zone are already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "NSW Fire Watch options",
+        "title": "Australian Fire Watch options",
         "description": "Emergency Warning cannot be snoozed; escalation always overrides acknowledgement or snooze.",
         "data": {
           "name": "Location name",
           "zone": "Home Assistant zone",
-          "fire_danger_district": "NSW fire weather district",
+          "jurisdiction": "State or territory",
+          "fire_danger_district": "NSW fire weather district (NSW only)",
           "weather_entity": "Weather entity (optional context only)",
           "readiness_entities": "Household readiness checkboxes (optional)",
           "notify_services": "Notify services (optional, one notify.* service per line)",
@@ -47,7 +49,7 @@
           "advice_radius_km": "Advice alert radius",
           "unclassified_fire_radius_km": "Unclassified active-fire alert radius",
           "stale_after_minutes": "Mark incident feed stale after",
-          "enable_bom_enrichment": "Enable BOM FBI and land-warning enrichment"
+          "enable_bom_enrichment": "Enable NSW BOM FBI and land-warning enrichment"
         }
       }
     },
