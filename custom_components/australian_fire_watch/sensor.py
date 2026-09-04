@@ -98,6 +98,14 @@ class FireWatchDangerSensor(FireWatchSensorBase):
         super().__init__(coordinator, "fire_danger_today")
 
     @property
+    def available(self) -> bool:
+        return super().available and bool(
+            self.coordinator.data.get("danger", {})
+            .get("today", {})
+            .get("available", False)
+        )
+
+    @property
     def native_value(self) -> str:
         return str(
             self.coordinator.data.get("danger", {})

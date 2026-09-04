@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import logging
 from time import monotonic
-from typing import Final
+from typing import Any, Final
 
 from aiohttp import ClientError, ClientSession
 
@@ -66,8 +67,14 @@ class OfficialFeedClient:
         self._session = session
         self._states: dict[str, _FeedState] = {}
 
-    async def async_fetch(self, name: str, url: str) -> FeedSnapshot:
-        """Fetch one resource without discarding its last known good body."""
+    async def async_fetch(
+        self, name: str, url: str, *, validator: Callable[[bytes], Any]
+    ) -> FeedSnapshot:
+        """Accept content and HTTP validators only after product validation.
+
+        A successful HTTP request is not evidence of a usable incident feed.
+        Parser errors take the same retention/backoff path as transport errors.
+        """
         state = self._states.setdefault(name, _FeedState())
         now = datetime.now(timezone.utc)
         if monotonic() < state.retry_after_monotonic:
@@ -128,6 +135,14 @@ class OfficialFeedClient:
                     if not body.strip():
                         raise ClientError("empty response")
 
+                    # Do not poison the last-good cache (including its ETag)
+                    # with a maintenance page, partial feed, or schema change.
+                    parsed = validator(body)
+                    if (
+                        getattr(parsed, "metadata", {}).get("snapshot_complete")
+                        is False
+                    ):
+                        raise ValueError("incomplete official feed snapshot")
                     new_etag = response.headers.get("ETag")
                     modified_header = response.headers.get("Last-Modified")
                     modified = _http_datetime(modified_header)
@@ -151,10 +166,19 @@ class OfficialFeedClient:
                         from_cache=False,
                         response_received=True,
                     )
-        except (TimeoutError, ClientError, ValueError, OSError) as err:
+        except (
+            TimeoutError,
+            ClientError,
+            ValueError,
+            TypeError,
+            KeyError,
+            IndexError,
+            OSError,
+        ) as err:
             state.failures += 1
             backoff = min(
-                30 * (2 ** (state.failures - 1)), int(MAX_BACKOFF.total_seconds())
+                30 * (2 ** min(state.failures - 1, 10)),
+                int(MAX_BACKOFF.total_seconds()),
             )
             state.retry_after_monotonic = monotonic() + backoff
             state.last_error = f"{type(err).__name__}: {err}"[:300]

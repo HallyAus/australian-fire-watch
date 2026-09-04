@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import Event, HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -210,6 +212,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_panel(hass)
     _register_services(hass)
     _register_mobile_actions(hass)
+    entry.async_on_unload(
+        async_track_time_interval(
+            hass, coordinator.async_retry_notifications, timedelta(seconds=30)
+        )
+    )
     return True
 
 

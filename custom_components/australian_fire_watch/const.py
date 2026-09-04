@@ -8,7 +8,7 @@ from typing import Any
 
 DOMAIN = "australian_fire_watch"
 NAME = "Australian Fire Watch"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 CONFIG_ENTRY_VERSION = 1
 
 PLATFORMS = ["sensor", "binary_sensor", "geo_location"]

@@ -9,6 +9,8 @@ from hashlib import sha1
 from math import asin, atan2, cos, degrees, radians, sin, sqrt
 from typing import Any, Iterable, Mapping
 
+from .geometry import Area, warning_area_distance
+
 
 class WarningLevel(StrEnum):
     """Australian Warning System fire-warning categories."""
@@ -130,6 +132,9 @@ class Incident:
     official_url: str | None = None
     polygons: tuple[tuple[tuple[float, float], ...], ...] = ()
     sources: tuple[str, ...] = ()
+    warning_areas: tuple[Area, ...] = ()
+    distance_to_warning_area_km: float | None = None
+    within_warning_area: bool | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", _safe_text(self.id, 160))
@@ -169,16 +174,34 @@ class Incident:
             self.is_fire,
             self.is_planned,
             (self.instruction or "").casefold(),
+            self.within_warning_area,
         )
 
+    @property
+    def alert_distance_km(self) -> float | None:
+        """Use the warning area for relevance, never its representative marker."""
+        if self.warning_rank > 0 and self.distance_to_warning_area_km is not None:
+            return self.distance_to_warning_area_km
+        return self.distance_km
+
     def with_home(self, latitude: float, longitude: float) -> "Incident":
-        if self.latitude is None or self.longitude is None:
-            return self
-        distance = haversine_km(latitude, longitude, self.latitude, self.longitude)
-        direction = compass_direction(
-            latitude, longitude, self.latitude, self.longitude
+        distance = direction = None
+        if self.latitude is not None and self.longitude is not None:
+            distance = haversine_km(latitude, longitude, self.latitude, self.longitude)
+            direction = compass_direction(
+                latitude, longitude, self.latitude, self.longitude
+            )
+        area_distance = within = None
+        if self.warning_rank > 0:
+            areas = self.warning_areas or tuple((ring,) for ring in self.polygons)
+            area_distance, within = warning_area_distance((latitude, longitude), areas)
+        return replace(
+            self,
+            distance_km=distance,
+            direction=direction,
+            distance_to_warning_area_km=area_distance,
+            within_warning_area=within,
         )
-        return replace(self, distance_km=distance, direction=direction)
 
     def as_dict(
         self,
@@ -198,6 +221,9 @@ class Incident:
             if self.distance_km is None
             else round(self.distance_km, 1),
             "direction": self.direction,
+            "distance_to_warning_area_km": self.distance_to_warning_area_km,
+            "within_warning_area": self.within_warning_area,
+            "alert_distance_km": self.alert_distance_km,
             "location": self.location,
             "council": self.council,
             "updated_at": _iso(self.updated_at),
@@ -258,7 +284,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dphi = radians(lat2 - lat1)
     dlambda = radians(lon2 - lon1)
     a = sin(dphi / 2) ** 2 + cos(p1) * cos(p2) * sin(dlambda / 2) ** 2
-    return earth_radius_km * 2 * asin(sqrt(a))
+    return earth_radius_km * 2 * asin(sqrt(min(1.0, max(0.0, a))))
 
 
 def compass_direction(lat1: float, lon1: float, lat2: float, lon2: float) -> str:
@@ -357,7 +383,8 @@ def incident_snapshot(incident: Incident, *, qualified: bool = False) -> dict[st
         "warning_rank": incident.warning_rank,
         "control_status": incident.control_status,
         "material_signature": list(incident.material_signature),
-        "distance_band": radius_band(incident.distance_km),
+        "distance_band": radius_band(incident.alert_distance_km),
+        "within_warning_area": incident.within_warning_area,
         "distance_km": incident.distance_km,
         "title": incident.title,
         "qualified": bool(qualified),
@@ -371,12 +398,18 @@ def classify_transition(previous: Mapping[str, Any], current: Incident) -> str |
     previous_band = int(previous.get("distance_band", 5))
     if (
         current.warning_rank > previous_warning
-        or radius_band(current.distance_km) < previous_band
+        or radius_band(current.alert_distance_km) < previous_band
+        or (
+            current.within_warning_area is True
+            and previous.get("within_warning_area") is not True
+        )
     ):
         return "escalated"
     if current.warning_rank < previous_warning:
         return "deescalated"
     previous_signature = tuple(previous.get("material_signature", ()))
+    if len(previous_signature) == 6:
+        previous_signature = (*previous_signature, None)  # 1.0.0 stored signature
     if current.material_signature != previous_signature:
         return "updated"
     return None
@@ -390,6 +423,7 @@ def track_incident_lifecycle(
     baseline_complete: bool,
     authoritative_incidents: Iterable[Incident] | None = None,
     allow_missing_updates: bool = True,
+    allow_deescalation: bool = True,
 ) -> tuple[dict[str, dict[str, Any]], tuple[LifecycleEvent, ...], bool]:
     """Advance incident records using one confirmed-current feed snapshot.
 
@@ -434,6 +468,13 @@ def track_incident_lifecycle(
             )
         else:
             transition = classify_transition(previous, incident)
+            if not allow_deescalation and incident.warning_rank < int(
+                previous.get("warning_rank", 0)
+            ):
+                # Partial source availability can add/escalate, but it cannot
+                # overwrite a known warning with a weaker representation.
+                next_records[incident_id] = dict(previous)
+                continue
             # The configured radius may be any value, not just one of the
             # generic display bands used by classify_transition.
             if is_qualified and not bool(previous.get("qualified", False)):
@@ -453,6 +494,9 @@ def track_incident_lifecycle(
     for incident_id in set(previous_records) - set(current):
         record = dict(previous_records[incident_id])
         if incident_id in authoritative:
+            if not allow_missing_updates:
+                next_records[incident_id] = record
+                continue
             events.append(
                 LifecycleEvent(
                     incident_id,

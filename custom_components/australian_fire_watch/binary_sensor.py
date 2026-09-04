@@ -29,6 +29,7 @@ async def async_setup_entry(
             FireWatchActiveWarningBinarySensor(coordinator),
             FireWatchTotalFireBanBinarySensor(coordinator),
             FireWatchFeedProblemBinarySensor(coordinator),
+            FireWatchDeliveryProblemBinarySensor(coordinator),
         ]
     )
 
@@ -55,18 +56,31 @@ class FireWatchActiveWarningBinarySensor(FireWatchBinarySensorBase):
         super().__init__(coordinator, "active_warning")
 
     @property
-    def is_on(self) -> bool:
-        return self.coordinator.data.get("status") in {
-            "advice",
-            "watch_and_act",
-            "emergency_warning",
-        }
+    def is_on(self) -> bool | None:
+        data = self.coordinator.data or {}
+        status = data.get("status")
+        feed = data.get("feed", {})
+        if status in {None, "stale", "unavailable"}:
+            return None
+        if status in {"advice", "watch_and_act", "emergency_warning"}:
+            return True if feed.get("current_incident_feeds") else None
+        return False if feed.get("assessment_complete") else None
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.is_on is not None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data or {}
         return {
-            "warning_level": self.coordinator.data.get("official_warning_level"),
-            "incident": self.coordinator.data.get("highest_priority_incident"),
+            "warning_level": data.get("official_warning_level"),
+            "incident": data.get("highest_priority_incident"),
+            "last_known_warning_records": data.get("last_known_warning_records", []),
+            "assessment_complete": data.get("feed", {}).get(
+                "assessment_complete", False
+            ),
+            "retained": not self.available,
         }
 
 
@@ -87,7 +101,13 @@ class FireWatchTotalFireBanBinarySensor(FireWatchBinarySensorBase):
 
     @property
     def available(self) -> bool:
-        return self.is_on is not None
+        return (
+            super().available
+            and self.coordinator.data.get("danger", {})
+            .get("today", {})
+            .get("available", False)
+            and self.is_on is not None
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -113,3 +133,23 @@ class FireWatchFeedProblemBinarySensor(FireWatchBinarySensorBase):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return dict(self.coordinator.data.get("feed", {}))
+
+
+class FireWatchDeliveryProblemBinarySensor(FireWatchBinarySensorBase):
+    """Expose pending, failed, and expired delivery obligations in HA."""
+
+    _attr_name = "Notification delivery problem"
+    _attr_icon = "mdi:message-alert"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(self, coordinator: FireWatchCoordinator) -> None:
+        super().__init__(coordinator, "notification_delivery_problem")
+
+    @property
+    def is_on(self) -> bool:
+        delivery = self.coordinator.data.get("notification_delivery", {})
+        return bool(delivery.get("pending_count") or delivery.get("last_error"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return dict(self.coordinator.data.get("notification_delivery", {}))

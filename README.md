@@ -101,7 +101,11 @@ explicit adapter for each documented public product:
 
 Every adapter filters for bush, grass, vegetation, or wildfire activity and
 explicit planned burns. Structure, vehicle, and building fires are excluded.
-The upstream record's warning and control fields are never conflated.
+The upstream record's warning and control fields are never conflated. Official
+warning-area membership and distance to its boundary determine alert relevance
+when polygon geometry is supplied; marker distance remains a separate display
+field. Missing or stale warning assessments make the warning binary sensor
+unavailable, never Off.
 
 Emergency WA permits automated access only to its designated RSS, CAP-AU, and
 SLIP feeds, with no more than one request per feed every five minutes. Australian
@@ -119,8 +123,12 @@ The national release preserves the mature NSW pipeline:
 - NSW RFS is the source of truth for current warning levels, fire-danger
   ratings, and Total Fire Bans.
 - BOM products add optional fire-weather and Fire Behaviour Index context.
-- CAP and GeoJSON snapshots are cross-checked before missing incidents can move
-  toward resolved.
+- Validated current sources can independently raise or escalate a warning.
+- Full incident products and the supplemental warning feed must be current before
+  missing incidents can move toward resolved. Two healthy missing snapshots are
+  required; uncertainty is not represented as a cleared warning.
+- Relative fire-danger periods are anchored to the source date, rather than
+  relabelling retained data at midnight. Expired declarations are unavailable.
 
 Fire-danger enrichment for other jurisdictions is intentionally shown as
 **Unknown / unavailable** in this release. Users must consult the official state
@@ -135,6 +143,16 @@ required.
 Notifications are raised only for meaningful lifecycle changes such as newly
 qualifying incidents, escalation, de-escalation, leaving the monitored radius,
 or resolution after healthy snapshots.
+
+Direct notifications are staged in persistent storage together with the lifecycle
+change, then delivered separately to each configured recipient. Transient failures
+are retried every 30 seconds with bounded backoff. A newer incident update replaces
+an older pending message; undelivered messages expire after 15 minutes (or the
+publisher's earlier expiry). The **Notification delivery problem** binary sensor
+exposes failures and pending delivery. Successful delivery means the Home Assistant
+notify action accepted the request, not confirmation that a phone displayed it.
+A restart after delivery but before the acknowledgement is saved can replay a
+message; stable notification tags limit duplicate notifications.
 
 Emergency Warning updates cannot be silenced by acknowledgement or snooze.
 Android and iOS notification priorities are derived from the official warning
@@ -190,6 +208,15 @@ it does not remove Home Assistant zones or readiness helpers.
 
     python -m unittest discover -s tests -v
     python -m compileall custom_components tests
+
+The separate runtime suite uses a real Home Assistant testing harness (Python 3.14
+for current Home Assistant releases):
+
+    python -m pip install -r requirements-test-ha.txt
+    python -m pytest -q tests_ha --asyncio-mode=auto
+
+Run this separately from the lightweight unit suite. CI runs both suites, HACS,
+hassfest, Python static checks and JavaScript syntax checks.
 
 Before restarting a live instance, run Home Assistant's configuration check.
 Tests cover feed parsing, lifecycle safety, native-map packaging, JSON/YAML
