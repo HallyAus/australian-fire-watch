@@ -2,8 +2,8 @@
 
 ## 1.1.0 cross-border coverage
 
-- A single monitored zone can combine any selection of Australian state and
-  territory incident feeds, including NSW + QLD for Southern Gold Coast users.
+- Select every state or territory covered by the monitoring radius. Most people
+  need one jurisdiction; border communities may need two or more.
 - One set of monitoring and alert radii is applied across jurisdiction borders.
 - Partial failure in any selected jurisdiction prevents a false confirmed-clear
   state while healthy feeds can still raise or escalate a current warning.

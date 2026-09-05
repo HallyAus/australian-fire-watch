@@ -1,5 +1,7 @@
 {
   "name": "Australian Fire Watch",
   "country": "AU",
-  "homeassistant": "2025.12.0"
+  "homeassistant": "2025.12.0",
+  "zip_release": true,
+  "filename": "australian_fire_watch.zip"
 }

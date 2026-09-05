@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Monitor an Australian location",
-        "description": "Select every state or territory that could affect this zone. Border locations can combine neighbouring jurisdictions under one monitoring radius. Uses anonymous official emergency-service feeds and remains supplementary to official warning channels.",
+        "description": "Select every state or territory covered by this zone's monitoring radius. Most people need one jurisdiction; border communities may need two or more. Uses anonymous official emergency-service feeds and remains supplementary to official warning channels.",
         "data": {
           "name": "Location name",
           "zone": "Home Assistant zone",
@@ -34,7 +34,7 @@
     "step": {
       "init": {
         "title": "Australian Fire Watch options",
-        "description": "Select all relevant jurisdictions for border coverage. Emergency Warning cannot be snoozed; escalation always overrides acknowledgement or snooze.",
+        "description": "Select every state or territory covered by this zone's monitoring radius. Most people need one jurisdiction; border communities may need two or more. Emergency Warning cannot be snoozed; escalation always overrides acknowledgement or snooze.",
         "data": {
           "name": "Location name",
           "zone": "Home Assistant zone",

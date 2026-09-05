@@ -85,6 +85,26 @@ class PackagingTests(unittest.TestCase):
         self.assertEqual("Australian Fire Watch", manifest["name"])
         self.assertEqual("AU", manifest["country"])
         self.assertRegex(manifest["homeassistant"], r"^20\d{2}\.\d{1,2}\.\d+$")
+        self.assertIs(manifest["zip_release"], True)
+        self.assertEqual("australian_fire_watch.zip", manifest["filename"])
+
+    def test_public_readme_assets_and_metrics(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        for marker in (
+            "docs/images/dashboard-desktop.png",
+            "docs/images/dashboard-mobile.png",
+            "github/downloads/HallyAus/australian-fire-watch/total",
+            "Home%20Assistant-2025.12%2B",
+            "github/actions/workflow/status/HallyAus/australian-fire-watch/validate.yml",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, readme)
+
+        for filename in ("dashboard-desktop.png", "dashboard-mobile.png"):
+            with self.subTest(filename=filename):
+                image = ROOT / "docs" / "images" / filename
+                self.assertTrue(image.is_file())
+                self.assertEqual(b"\x89PNG\r\n\x1a\n", image.read_bytes()[:8])
 
     def test_integration_manifest(self) -> None:
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
