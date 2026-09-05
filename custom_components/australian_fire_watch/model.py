@@ -93,6 +93,8 @@ def is_planned_activity(incident_type: str, title: str = "") -> bool:
             "hazard reduction",
             "planned burn",
             "planned event",
+            "prescribed burn",
+            "permitted burn",
             "burn off",
             "burn-off",
             "cultural burn",
@@ -240,6 +242,38 @@ class Incident:
             "acknowledged": acknowledged,
             "snoozed_until": snoozed_until,
         }
+
+
+def incident_map_icon(incident: Incident) -> str:
+    """Return a stable map pictogram for the normalized fire event type.
+
+    The icon communicates event type only. Official warning severity remains a
+    separate field and is represented by the map marker colour in the frontend.
+    """
+    if incident.is_planned:
+        return "mdi:fire-off"
+
+    event_text = f"{incident.incident_type} {incident.title}".casefold()
+    if any(
+        marker in event_text
+        for marker in ("grass", "stubble", "crop fire", "pasture")
+    ):
+        return "mdi:grass"
+    if any(
+        marker in event_text
+        for marker in (
+            "bush",
+            "forest",
+            "scrub",
+            "vegetation",
+            "wildfire",
+            "wild fire",
+        )
+    ):
+        return "mdi:pine-tree-fire"
+    if incident.is_fire:
+        return "mdi:fire"
+    return "mdi:alert-circle"
 
 
 @dataclass(frozen=True, slots=True)

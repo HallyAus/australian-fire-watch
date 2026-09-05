@@ -66,7 +66,10 @@ Assistant installations.
 - A bundled sidebar command centre and a reusable Lovelace card.
 - A bundled Home Assistant dashboard strategy.
 - Home Assistant's native map card, using the monitored zone as the focus and
-  incident entities as non-focusing overlays.
+  incident entities as non-focusing overlays. Event-specific icons distinguish
+  bush or vegetation fire, grass fire, planned burn, other fire, and unknown
+  records. Official warning severity takes colour priority; a known planned
+  burn receives a separately labelled green treatment when no warning applies.
 - NSW fire-danger, Total Fire Ban, FBI, and BOM warning enrichment.
 
 ## Screenshots
@@ -81,8 +84,18 @@ Assistant installations.
   <img src="docs/images/dashboard-mobile.png" width="410" alt="Australian Fire Watch mobile dashboard showing the same included command centre in a narrow Home Assistant layout">
 </p>
 
-Screenshots use deterministic demonstration data. The dashboard and card shown
-above ship with the integration; no separate frontend download is required.
+### Phone notification
+
+<p align="center">
+  <img src="docs/images/notification-mobile.png" width="360" alt="Demonstration Australian Fire Watch phone notification with acknowledge, snooze and official-map actions">
+</p>
+
+Screenshots use synthetic demonstration data rendered inside Home Assistant;
+the Canberra map uses Home Assistant's native map presentation and public map
+tiles. No private Home Assistant state or real incident is shown. The dashboard,
+card, and actionable notification path shown above ship with the integration;
+no separate frontend download is required. Map data ©
+[OpenStreetMap contributors](https://www.openstreetmap.org/copyright).
 
 ## Install with HACS
 
@@ -127,8 +140,23 @@ If more than one location is configured, set the summary sensor explicitly:
     entity: sensor.australian_fire_watch_home_status
 
 The map is Home Assistant's standard map card. It uses default_zoom: 11,
-auto_fit: false, and fit_zones: false; this avoids a distant statewide incident
-pulling the local view away from the monitored zone.
+auto_fit: false, fit_zones: false, and an unclipped 4:3 layout (16:9 in the
+compact card); this avoids a distant statewide incident pulling the local view
+away from the monitored zone or hiding markers below the dashboard's map frame.
+Its native icon-marker mode uses the incident entity's pictogram for event type.
+Red, orange, and yellow marker borders represent Emergency Warning, Watch and
+Act, and Advice; unclassified incidents remain slate and planned burns are
+green. Australian Fire Watch intentionally filters out unrelated medical,
+storm, transport, and structure-fire events rather than presenting itself as an
+all-hazards service.
+
+| Normalised fire event | Native map icon |
+| --- | --- |
+| Bush, forest, scrub, vegetation, or wildfire | `mdi:pine-tree-fire` |
+| Grass, stubble, crop, or pasture fire | `mdi:grass` |
+| Planned, prescribed, permitted, cultural, or hazard-reduction burn | `mdi:fire-off` |
+| Other fire | `mdi:fire` |
+| Unclassified record | `mdi:alert-circle` |
 
 The bundled dashboard strategy is also available:
 

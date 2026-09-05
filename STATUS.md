@@ -1,5 +1,16 @@
 # Australian Fire Watch status
 
+## Unreleased event-map and branding refresh
+
+- Native Home Assistant map markers now use different icons for bush or
+  vegetation fire, grass fire, planned burns, other fire, and unknown records.
+- Official warning severity takes priority over marker colour. Known planned
+  work is green only when no warning applies; unknown warnings remain slate.
+- The full and compact map layouts use supported Home Assistant aspect ratios so
+  markers are not clipped below the dashboard frame.
+- The Australia-and-flame logo, synthetic desktop/mobile dashboard screenshots,
+  and phone-notification preview replace the previous presentation assets.
+
 ## 1.1.0 cross-border coverage
 
 - Select every state or territory covered by the monitoring radius. Most people

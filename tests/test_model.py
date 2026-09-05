@@ -21,6 +21,7 @@ from custom_components.australian_fire_watch.model import (  # noqa: E402
     classify_transition,
     incident_event_summary,
     incident_entity_id,
+    incident_map_icon,
     incident_notification_priority,
     incident_snapshot,
     sort_incidents,
@@ -34,6 +35,38 @@ class IncidentModelTests(unittest.TestCase):
         entity_id = incident_entity_id("01M16G3T2VNK", "incident-1")
         self.assertEqual(entity_id, entity_id.lower())
         self.assertTrue(entity_id.startswith("geo_location.australian_fire_watch_"))
+
+    def test_map_icons_encode_event_type_not_warning_severity(self) -> None:
+        cases = (
+            (
+                Incident("bush", "Ridge Road", "Bush Fire", "Emergency Warning", is_fire=True),
+                "mdi:pine-tree-fire",
+            ),
+            (
+                Incident("grass", "Paddock", "Grass Fire", "Advice", is_fire=True),
+                "mdi:grass",
+            ),
+            (
+                Incident("planned", "Forest operation", "Hazard Reduction", is_fire=True),
+                "mdi:fire-off",
+            ),
+            (
+                Incident("generic", "Reported fire", "Fire", is_fire=True),
+                "mdi:fire",
+            ),
+            (
+                Incident("unknown", "Unclassified event", "Unknown", is_fire=False),
+                "mdi:alert-circle",
+            ),
+        )
+        for incident, expected in cases:
+            with self.subTest(incident=incident.id):
+                self.assertEqual(expected, incident_map_icon(incident))
+
+        lower_warning = Incident(
+            "bush-advice", "Ridge Road", "Bush Fire", "Advice", is_fire=True
+        )
+        self.assertEqual("mdi:pine-tree-fire", incident_map_icon(lower_warning))
 
     def test_authoritative_snapshot_rejects_partial_or_unexpected_empty(self) -> None:
         self.assertFalse(

@@ -47,7 +47,14 @@ class PackagingTests(unittest.TestCase):
         self.assertEqual([DOMAIN], integrations)
 
     def test_legacy_namespace_is_not_published(self) -> None:
-        excluded_parts = {".git", ".ruff_cache", "__pycache__"}
+        excluded_parts = {
+            ".git",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".venv",
+            "__pycache__",
+            "node_modules",
+        }
         text_suffixes = {
             ".html",
             ".js",
@@ -93,6 +100,7 @@ class PackagingTests(unittest.TestCase):
         for marker in (
             "docs/images/dashboard-desktop.png",
             "docs/images/dashboard-mobile.png",
+            "docs/images/notification-mobile.png",
             "github/downloads/HallyAus/australian-fire-watch/total",
             "Home%20Assistant-2025.12%2B",
             "github/actions/workflow/status/HallyAus/australian-fire-watch/validate.yml",
@@ -100,11 +108,20 @@ class PackagingTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, readme)
 
-        for filename in ("dashboard-desktop.png", "dashboard-mobile.png"):
+        minimum_dimensions = {
+            "dashboard-desktop.png": (1800, 2600),
+            "dashboard-mobile.png": (1100, 5000),
+            "notification-mobile.png": (1100, 2400),
+        }
+        for filename, expected_minimum in minimum_dimensions.items():
             with self.subTest(filename=filename):
                 image = ROOT / "docs" / "images" / filename
                 self.assertTrue(image.is_file())
-                self.assertEqual(b"\x89PNG\r\n\x1a\n", image.read_bytes()[:8])
+                data = image.read_bytes()
+                self.assertEqual(b"\x89PNG\r\n\x1a\n", data[:8])
+                width, height = struct.unpack(">II", data[16:24])
+                self.assertGreaterEqual(width, expected_minimum[0])
+                self.assertGreaterEqual(height, expected_minimum[1])
 
     def test_integration_manifest(self) -> None:
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
@@ -161,8 +178,11 @@ class PackagingTests(unittest.TestCase):
         self.assertIn("window.loadCardHelpers", panel)
         self.assertIn("auto_fit: false", panel)
         self.assertIn("fit_zones: false", panel)
+        self.assertIn('? "16:9" : "4:3"', panel)
         self.assertIn("focus: true", panel)
         self.assertIn("focus: false", panel)
+        self.assertIn('label_mode: "icon"', panel)
+        self.assertIn("mapMarkerColor(incident)", panel)
         self.assertIn("refreshBucket: Math.floor(Date.now() / 300_000)", panel)
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -221,8 +241,20 @@ class PackagingTests(unittest.TestCase):
         self.assertIn("000", readme)
 
     def test_repository_does_not_package_home_assistant_private_state(self) -> None:
+        excluded_parts = {
+            ".git",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".venv",
+            "__pycache__",
+            "node_modules",
+        }
         forbidden_names = {".storage", "secrets.yaml", "home-assistant_v2.db"}
-        packaged = {path.name for path in ROOT.rglob("*")}
+        packaged = {
+            path.name
+            for path in ROOT.rglob("*")
+            if not excluded_parts.intersection(path.parts)
+        }
         self.assertFalse(forbidden_names & packaged)
 
         nabu_host = re.compile(r"https://[a-z0-9]+\.ui\.nabu\.casa", re.I)
@@ -242,7 +274,11 @@ class PackagingTests(unittest.TestCase):
         public_text = "\n".join(
             path.read_text(encoding="utf-8", errors="ignore")
             for path in ROOT.rglob("*")
-            if path.is_file() and path.suffix.lower() in text_suffixes
+            if (
+                path.is_file()
+                and not excluded_parts.intersection(path.parts)
+                and path.suffix.lower() in text_suffixes
+            )
         )
         self.assertIsNone(nabu_host.search(public_text))
         self.assertNotRegex(public_text, r"notify\.mobile_app_(?!<)")

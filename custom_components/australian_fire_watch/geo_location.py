@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import FireWatchCoordinator
-from .model import Incident, incident_entity_id
+from .model import Incident, incident_entity_id, incident_map_icon
 
 
 async def async_setup_entry(
@@ -80,7 +80,7 @@ class FireWatchGeoLocation(GeolocationEvent):
         self._attr_distance = incident.distance_km
         self._attr_latitude = incident.latitude
         self._attr_longitude = incident.longitude
-        self._attr_icon = "mdi:fire" if incident.is_fire else "mdi:alert-circle"
+        self._attr_icon = incident_map_icon(incident)
         self._attr_attribution = self.coordinator.jurisdiction_for_incident(
             incident
         ).attribution

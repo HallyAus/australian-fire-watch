@@ -269,9 +269,25 @@ const severityClass = (warning, rating = null) => {
 const isPlannedIncident = (incident) => {
   if (asBoolean(incident?.is_planned) === true) return true;
   const type = slug(firstPresent(incident?.type, incident?.incident_type));
-  return ["burn_off", "hazard_reduction", "planned_burn", "prescribed_burn"].some(
-    (term) => type.includes(term),
-  );
+  return [
+    "burn_off",
+    "cultural_burn",
+    "hazard_reduction",
+    "permitted_burn",
+    "planned_burn",
+    "planned_event",
+    "prescribed_burn",
+  ].some((term) => type.includes(term));
+};
+
+const mapMarkerColor = (incident) => {
+  const warning = warningKey(incident?.warning);
+  if (warning === "emergency_warning") return "#dc2626";
+  if (warning === "watch_and_act") return "#ea580c";
+  if (warning === "advice") return "#eab308";
+  // Green means explicitly classified planned work, never a generic safe state.
+  if (incident?.isPlanned) return "#16a34a";
+  return "#64748b";
 };
 
 const normalizeIncident = (raw, index = 0) => {
@@ -1270,14 +1286,24 @@ const STYLES = `
   details { border-top: 1px solid var(--fw-border); margin-top: 12px; padding-top: 10px; }
   summary { min-height: 44px; display: flex; align-items: center; gap: 8px; font-weight: 900; cursor: pointer; }
 
-  .map-host { position: relative; height: 330px; min-height: 330px; overflow: hidden; border: 1px solid var(--fw-border); border-radius: 14px; background: rgba(0,0,0,.1); }
-  .map-host > * { display: block; min-height: 330px; }
+  .map-host { position: relative; min-height: 0; overflow: hidden; border: 1px solid var(--fw-border); border-radius: 14px; background: rgba(0,0,0,.1); }
+  .map-host > * { display: block; min-height: 0; }
   .map-host > * { width: 100%; }
   .map-fallback { min-height: 330px; display: grid; place-items: center; padding: 24px; text-align: center; }
   .map-fallback p { margin-bottom: 10px; }
   .map-fallback .button-link { margin: 4px; }
   .map-provider-credit { margin: 8px 2px 0; color: var(--fw-muted); font-size: .66rem; line-height: 1.35; text-align: right; }
   .map-provider-credit a { color: inherit; }
+  .map-key { display: flex; flex-wrap: wrap; gap: 7px 12px; align-items: center; margin: 9px 0; color: var(--fw-muted); font-size: .72rem; }
+  .map-key span { display: inline-flex; gap: 4px; align-items: center; }
+  .map-key strong { color: var(--primary-text-color, #ecf2f8); }
+  .map-key ha-icon { width: 18px; height: 18px; color: var(--primary-text-color, #ecf2f8); --mdc-icon-size: 18px; }
+  .map-key-dot { width: 10px; height: 10px; border: 2px solid currentColor; border-radius: 50%; background: var(--fw-surface); }
+  .map-key-dot.emergency { color: #dc2626; }
+  .map-key-dot.watch { color: #ea580c; }
+  .map-key-dot.advice { color: #eab308; }
+  .map-key-dot.planned { color: #16a34a; }
+  .map-key-dot.unclassified { color: #64748b; }
   .map-marker {
     display: grid;
     place-items: center;
@@ -1398,8 +1424,8 @@ const STYLES = `
   .compact-map-heading { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
   .compact-map-heading strong { font-size: .9rem; }
   .compact-map-heading span { color: var(--fw-muted); font-size: .72rem; }
-  .compact-map-host { height: 240px; min-height: 240px; border-radius: 12px; }
-  .compact-map-host > * { min-height: 240px; }
+  .compact-map-host { min-height: 0; border-radius: 12px; }
+  .compact-map-host > * { min-height: 0; }
   .compact-map .map-fallback { min-height: 240px; padding: 18px; }
   .compact-map .map-provider-credit { text-align: left; }
 
@@ -2274,12 +2300,29 @@ const renderMapFallback = (
   </div></div>
 `;
 
+const renderMapKey = () => `
+  <div class="map-key" aria-label="Map marker legend">
+    <strong>Event</strong>
+    <span><ha-icon icon="mdi:pine-tree-fire"></ha-icon>Bush / vegetation</span>
+    <span><ha-icon icon="mdi:grass"></ha-icon>Grass</span>
+    <span><ha-icon icon="mdi:fire-off"></ha-icon>Planned burn</span>
+    <span><ha-icon icon="mdi:fire"></ha-icon>Other fire</span>
+    <strong>Marker colour</strong>
+    <span><i class="map-key-dot emergency"></i>Emergency</span>
+    <span><i class="map-key-dot watch"></i>Watch and Act</span>
+    <span><i class="map-key-dot advice"></i>Advice</span>
+    <span><i class="map-key-dot planned"></i>Planned</span>
+    <span><i class="map-key-dot unclassified"></i>No official warning</span>
+  </div>
+`;
+
 const renderCompactMap = () => `
   <section class="compact-map" aria-labelledby="compact-map-heading">
     <div class="compact-map-heading">
       <strong id="compact-map-heading">Incidents near home</strong>
       <span>Home Assistant map · local view</span>
     </div>
+    ${renderMapKey()}
     <div id="incident-map" class="map-host compact-map-host" aria-label="Fire incidents near the monitored location">
       ${renderMapFallback()}
     </div>
@@ -2290,6 +2333,7 @@ const renderMap = () => `
   <section class="surface" aria-labelledby="map-heading">
     <div class="section-heading"><h2 id="map-heading">Incident map</h2>${icon("map")}</div>
     <p class="subtle small">Centred on your monitored location. Markers show reported locations, not fire spread, travel safety, or evacuation routes.</p>
+    ${renderMapKey()}
     <div id="incident-map" class="map-host" aria-label="Official fire incident map">
       ${renderMapFallback()}
     </div>
@@ -2606,12 +2650,19 @@ class AustralianFireWatchBase extends HTMLElement {
       ]) {
         if (!incident?.entityId || seenIncidentIds.has(incident.entityId)) continue;
         seenIncidentIds.add(incident.entityId);
-        entities.push({ entity: incident.entityId, focus: false });
+        entities.push({
+          entity: incident.entityId,
+          focus: false,
+          label_mode: "icon",
+          color: mapMarkerColor(incident),
+        });
       }
       const mapCard = helpers.createCardElement({
         type: "map",
         entities,
         default_zoom: MAP_DEFAULT_ZOOM,
+        aspect_ratio:
+          asBoolean(this._config.compact) === true ? "16:9" : "4:3",
         auto_fit: false,
         fit_zones: false,
         hours_to_show: 0,
