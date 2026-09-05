@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.components.frontend import (
     add_extra_js_url,
     async_register_built_in_panel,
@@ -27,9 +26,10 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     CONF_ADVICE_RADIUS,
     CONF_DISTRICT,
-    CONF_ENABLE_BOM,
     CONF_EMERGENCY_RADIUS,
+    CONF_ENABLE_BOM,
     CONF_JURISDICTION,
+    CONF_JURISDICTIONS,
     CONF_MONITOR_RADIUS,
     CONF_NOTIFY_SERVICES,
     CONF_READINESS_ENTITIES,
@@ -38,10 +38,11 @@ from .const import (
     CONF_WATCH_RADIUS,
     CONF_WEATHER_ENTITY,
     CONF_ZONE,
+    CONFIG_ENTRY_VERSION,
     DEFAULT_ADVICE_RADIUS_KM,
     DEFAULT_DISTRICT,
-    DEFAULT_ENABLE_BOM,
     DEFAULT_EMERGENCY_RADIUS_KM,
+    DEFAULT_ENABLE_BOM,
     DEFAULT_JURISDICTION,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
@@ -62,6 +63,8 @@ from .const import (
     SERVICE_SNOOZE,
     SERVICE_TEST_ALERT,
     VERSION,
+    config_entry_unique_id,
+    jurisdiction_codes,
 )
 from .coordinator import FireWatchCoordinator
 
@@ -102,6 +105,11 @@ YAML_ENTRY_SCHEMA = vol.Schema(
         vol.Optional(CONF_ZONE, default=DEFAULT_ZONE): cv.entity_id,
         vol.Optional(CONF_JURISDICTION, default=DEFAULT_JURISDICTION): vol.In(
             ("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA")
+        ),
+        vol.Optional(CONF_JURISDICTIONS): vol.All(
+            cv.ensure_list,
+            [vol.In(("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"))],
+            vol.Length(min=1),
         ),
         vol.Optional(CONF_DISTRICT, default=DEFAULT_DISTRICT): vol.Any(
             "", vol.In(FIRE_DANGER_DISTRICTS)
@@ -216,6 +224,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_track_time_interval(
             hass, coordinator.async_retry_notifications, timedelta(seconds=30)
         )
+    )
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate 1.0.x single-jurisdiction entries to cross-border selections."""
+    if entry.version > CONFIG_ENTRY_VERSION:
+        return False
+    if entry.version == CONFIG_ENTRY_VERSION:
+        return True
+
+    def migrate(values: Any) -> dict[str, Any]:
+        result = dict(values)
+        if CONF_JURISDICTIONS in result or CONF_JURISDICTION in result:
+            result[CONF_JURISDICTIONS] = list(jurisdiction_codes(result))
+            result.pop(CONF_JURISDICTION, None)
+        return result
+
+    data = migrate(entry.data)
+    options = migrate(entry.options)
+    combined = {**data, **options}
+    hass.config_entries.async_update_entry(
+        entry,
+        data=data,
+        options=options,
+        unique_id=config_entry_unique_id(combined),
+        version=CONFIG_ENTRY_VERSION,
     )
     return True
 

@@ -81,7 +81,9 @@ class FireWatchGeoLocation(GeolocationEvent):
         self._attr_latitude = incident.latitude
         self._attr_longitude = incident.longitude
         self._attr_icon = "mdi:fire" if incident.is_fire else "mdi:alert-circle"
-        self._attr_attribution = self.coordinator.jurisdiction.attribution
+        self._attr_attribution = self.coordinator.jurisdiction_for_incident(
+            incident
+        ).attribution
 
     async def async_added_to_hass(self) -> None:
         self._remove_listener = self.coordinator.async_add_listener(self._handle_update)
@@ -104,6 +106,7 @@ class FireWatchGeoLocation(GeolocationEvent):
         incident = self.incident
         if incident is None:
             return {}
+        profile = self.coordinator.jurisdiction_for_incident(incident)
         return {
             "external_id": incident.id,
             "category": incident.warning_level,
@@ -117,6 +120,6 @@ class FireWatchGeoLocation(GeolocationEvent):
             if incident.updated_at
             else None,
             "official_url": incident.official_url,
-            "jurisdiction": self.coordinator.jurisdiction.code,
-            "source_name": self.coordinator.jurisdiction.agency,
+            "jurisdiction": profile.code,
+            "source_name": profile.agency,
         }

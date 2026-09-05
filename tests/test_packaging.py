@@ -107,7 +107,7 @@ class PackagingTests(unittest.TestCase):
             self.assertTrue((COMPONENT / "config_flow.py").is_file())
 
         setup = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
-        self.assertNotIn("async def async_migrate_entry", setup)
+        self.assertIn("async def async_migrate_entry", setup)
 
     def test_local_brand_icon(self) -> None:
         icon = COMPONENT / "brand" / "icon.png"

@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
@@ -14,9 +13,10 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_ADVICE_RADIUS,
     CONF_DISTRICT,
-    CONF_ENABLE_BOM,
     CONF_EMERGENCY_RADIUS,
+    CONF_ENABLE_BOM,
     CONF_JURISDICTION,
+    CONF_JURISDICTIONS,
     CONF_MONITOR_RADIUS,
     CONF_NAME,
     CONF_NOTIFY_SERVICES,
@@ -29,9 +29,8 @@ from .const import (
     CONFIG_ENTRY_VERSION,
     DEFAULT_ADVICE_RADIUS_KM,
     DEFAULT_DISTRICT,
-    DEFAULT_ENABLE_BOM,
     DEFAULT_EMERGENCY_RADIUS_KM,
-    DEFAULT_JURISDICTION,
+    DEFAULT_ENABLE_BOM,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
     DEFAULT_STALE_AFTER_MINUTES,
@@ -41,6 +40,7 @@ from .const import (
     DOMAIN,
     FIRE_DANGER_DISTRICTS,
     config_entry_unique_id,
+    jurisdiction_codes,
 )
 from .jurisdictions import JURISDICTION_OPTIONS
 
@@ -69,12 +69,13 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             CONF_ZONE, default=defaults.get(CONF_ZONE, DEFAULT_ZONE)
         ): selector.EntitySelector(selector.EntitySelectorConfig(domain="zone")),
         vol.Required(
-            CONF_JURISDICTION,
-            default=defaults.get(CONF_JURISDICTION, DEFAULT_JURISDICTION),
+            CONF_JURISDICTIONS,
+            default=list(jurisdiction_codes(defaults)),
         ): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=list(JURISDICTION_OPTIONS),
                 mode=selector.SelectSelectorMode.DROPDOWN,
+                multiple=True,
             )
         ),
         vol.Optional(
@@ -158,10 +159,9 @@ def _radius_selector(maximum: int) -> selector.NumberSelector:
 
 def _prepare(data: dict[str, Any]) -> dict[str, Any]:
     result = dict(data)
-    result[CONF_JURISDICTION] = str(
-        result.get(CONF_JURISDICTION, DEFAULT_JURISDICTION)
-    ).upper()
-    if result[CONF_JURISDICTION] != "NSW":
+    result[CONF_JURISDICTIONS] = list(jurisdiction_codes(result))
+    result.pop(CONF_JURISDICTION, None)
+    if "NSW" not in result[CONF_JURISDICTIONS]:
         # District products are NSW-only in this release. Never display an NSW
         # district rating for a location configured in another jurisdiction.
         result[CONF_DISTRICT] = ""
@@ -185,6 +185,8 @@ def _prepare(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _valid(data: dict[str, Any]) -> bool:
+    if not jurisdiction_codes(data):
+        return False
     services = _notify_list(data.get(CONF_NOTIFY_SERVICES, []))
     if any(not item.startswith("notify.") for item in services):
         return False
@@ -228,7 +230,8 @@ class FireWatchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         for entry in self._async_current_entries():
             if (
                 entry.unique_id == unique
-                or config_entry_unique_id(entry.data) == unique
+                or config_entry_unique_id({**dict(entry.data), **dict(entry.options)})
+                == unique
             ):
                 self.hass.config_entries.async_update_entry(
                     entry,
@@ -262,8 +265,27 @@ class FireWatchOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             if _valid(user_input):
-                return self.async_create_entry(title="", data=_prepare(user_input))
-            errors["base"] = "invalid_settings"
+                data = _prepare(user_input)
+                unique = config_entry_unique_id(data)
+                duplicate = any(
+                    entry.entry_id != self._entry.entry_id
+                    and (
+                        entry.unique_id == unique
+                        or config_entry_unique_id(
+                            {**dict(entry.data), **dict(entry.options)}
+                        )
+                        == unique
+                    )
+                    for entry in self.hass.config_entries.async_entries(DOMAIN)
+                )
+                if not duplicate:
+                    self.hass.config_entries.async_update_entry(
+                        self._entry, unique_id=unique
+                    )
+                    return self.async_create_entry(title="", data=data)
+                errors["base"] = "duplicate_selection"
+            else:
+                errors["base"] = "invalid_settings"
         defaults = {**dict(self._entry.data), **dict(self._entry.options)}
         return self.async_show_form(
             step_id="init", data_schema=_schema(user_input or defaults), errors=errors

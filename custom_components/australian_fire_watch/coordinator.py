@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Mapping
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import partial
-import logging
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -19,16 +20,14 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import FeedSnapshot, OfficialFeedClient
-from .notifications import NotificationOutbox
 from .const import (
     BOM_FIRE_DANGER_URL,
     BOM_WARNINGS_URL,
     CAP_URL,
     CONF_ADVICE_RADIUS,
     CONF_DISTRICT,
-    CONF_ENABLE_BOM,
     CONF_EMERGENCY_RADIUS,
-    CONF_JURISDICTION,
+    CONF_ENABLE_BOM,
     CONF_MONITOR_RADIUS,
     CONF_NAME,
     CONF_NOTIFY_SERVICES,
@@ -40,9 +39,8 @@ from .const import (
     CONF_ZONE,
     DEFAULT_ADVICE_RADIUS_KM,
     DEFAULT_DISTRICT,
-    DEFAULT_ENABLE_BOM,
     DEFAULT_EMERGENCY_RADIUS_KM,
-    DEFAULT_JURISDICTION,
+    DEFAULT_ENABLE_BOM,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
     DEFAULT_STALE_AFTER_MINUTES,
@@ -60,13 +58,15 @@ from .const import (
     OFFICIAL_INCIDENTS_URL,
     SUMMARY_INCIDENT_LIMIT,
     SUMMARY_PLANNED_LIMIT,
+    jurisdiction_codes,
 )
+from .jurisdictions import Jurisdiction, jurisdiction_for
 from .model import (
     DangerLifecycleEvent,
     Incident,
     LifecycleEvent,
-    WarningLevel,
     ParsedFeed,
+    WarningLevel,
     danger_notification_priority,
     incident_entity_id,
     incident_event_summary,
@@ -77,7 +77,7 @@ from .model import (
     track_danger_lifecycle,
     track_incident_lifecycle,
 )
-from .jurisdictions import Jurisdiction, jurisdiction_for
+from .notifications import NotificationOutbox
 from .parsers import (
     FeedParseError,
     merge_incidents,
@@ -102,6 +102,20 @@ BOM_FEEDS = {
     "bom_idn10016": BOM_FIRE_DANGER_URL,
     "bom_nsw_warnings": BOM_WARNINGS_URL,
 }
+
+
+@dataclass(frozen=True, slots=True)
+class JurisdictionSnapshot:
+    """One jurisdiction's normalized data and independent health assessment."""
+
+    profile: Jurisdiction
+    incidents: tuple[Incident, ...]
+    current_incidents: tuple[Incident, ...]
+    feed: dict[str, Any]
+    danger: dict[str, Any] | None = None
+    warnings: tuple[dict[str, Any], ...] = ()
+    snapshot_current: bool = False
+    danger_current: bool = False
 
 
 class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -147,10 +161,20 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @property
     def jurisdiction(self) -> Jurisdiction:
-        """Selected publisher profile; legacy entries remain NSW."""
-        return jurisdiction_for(
-            self.config.get(CONF_JURISDICTION, DEFAULT_JURISDICTION)
-        )
+        """Primary publisher profile retained for backward-compatible fields."""
+        return self.jurisdictions[0]
+
+    @property
+    def jurisdictions(self) -> tuple[Jurisdiction, ...]:
+        """All publishers selected for this zone, including migrated entries."""
+        return tuple(jurisdiction_for(code) for code in jurisdiction_codes(self.config))
+
+    def jurisdiction_for_incident(self, incident: Incident) -> Jurisdiction:
+        """Resolve the publisher for an incident without trusting its title."""
+        for profile in self.jurisdictions:
+            if incident.official_url == profile.official_url:
+                return profile
+        return self.jurisdiction
 
     async def async_initialize(self) -> None:
         """Load persistent lifecycle/acknowledgement state before first poll."""
@@ -186,15 +210,75 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             checkpoint = self._persistent_state()
             self._lifecycle_committed = False
             try:
-                if self.jurisdiction.code != "NSW":
-                    return await self._async_update_regional_data()
-                return await self._async_update_nsw_data()
+                self._parse_errors = {}
+                results = tuple(
+                    await asyncio.gather(
+                        *(
+                            self._async_collect_jurisdiction(profile)
+                            for profile in self.jurisdictions
+                        )
+                    )
+                )
+                all_items: tuple[Incident, ...] = ()
+                current_items: tuple[Incident, ...] = ()
+                for result in results:
+                    all_items = merge_incidents(all_items, result.incidents)
+                    current_items = merge_incidents(
+                        current_items, result.current_incidents
+                    )
+
+                _located, monitored = self._locate_incidents(all_items)
+                current_located, current_monitored = self._locate_incidents(
+                    current_items
+                )
+                self._set_display_incidents(monitored)
+                self._feed = self._compose_combined_feed(results)
+
+                nsw = next(
+                    (result for result in results if result.profile.code == "NSW"),
+                    None,
+                )
+                if nsw is not None and nsw.danger is not None:
+                    self._danger = nsw.danger
+                    self._warnings = list(nsw.warnings)
+                else:
+                    self._danger = _unknown_danger()
+                    self._danger["district"] = (
+                        "Not available for selected jurisdictions"
+                    )
+                    self._danger["source_note"] = (
+                        "Use the official state or territory fire-danger source."
+                    )
+                    self._warnings = []
+
+                events = await self._async_track_lifecycle(
+                    current_monitored,
+                    current_located,
+                    any(result.snapshot_current for result in results),
+                    self._feed["assessment_complete"],
+                )
+                danger_events = (
+                    await self._async_track_danger_lifecycle(nsw.danger_current)
+                    if nsw is not None
+                    else []
+                )
+                self.last_events = tuple(events)
+                self.last_danger_events = tuple(danger_events)
+                await self._async_emit_events(events, danger_events)
+                return self._compose_data()
             except Exception:
                 if not self._lifecycle_committed:
                     self._restore_persistent_state(checkpoint)
                 raise
 
-    async def _async_update_nsw_data(self) -> dict[str, Any]:
+    async def _async_collect_jurisdiction(
+        self, profile: Jurisdiction
+    ) -> JurisdictionSnapshot:
+        if profile.code == "NSW":
+            return await self._async_collect_nsw(profile)
+        return await self._async_collect_regional(profile)
+
+    async def _async_collect_nsw(self, profile: Jurisdiction) -> JurisdictionSnapshot:
         feeds = dict(CORE_FEEDS)
         parsers = {
             "rfs_cap": parse_cap,
@@ -221,7 +305,6 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
             )
         }
-        self._parse_errors = {}
         parsed = {
             name: self._parse(name, snapshots[name], parser)
             for name, parser in parsers.items()
@@ -232,12 +315,6 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for name in incident_names
             if self._source_current(snapshots[name], parsed[name])
         }
-        self._feed = self._compose_feed(
-            snapshots,
-            parsed["rfs_cap"],
-            parsed["rfs_geojson"],
-            parsed["rfs_incident_alerts"],
-        )
         all_items = merge_incidents(
             *(parsed[name].incidents if parsed[name] else () for name in incident_names)
         )
@@ -250,31 +327,34 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Validate raw products before applying the common bushfire-only policy.
         all_items = fire_incidents_only(_incident_feed(all_items)).incidents
         current_items = fire_incidents_only(_incident_feed(current_items)).incidents
-        _located, monitored = self._locate_incidents(all_items)
-        current_located, current_monitored = self._locate_incidents(current_items)
-        self._set_display_incidents(monitored)
-        self._danger = self._compose_danger(
+        danger = self._compose_danger(
             parsed["rfs_fdr_toban"], parsed.get("bom_idn10016"), snapshots
         )
         warnings = parsed.get("bom_nsw_warnings")
-        self._warnings = list(warnings.metadata.get("warnings", [])) if warnings else []
-        events = await self._async_track_lifecycle(
-            current_monitored,
-            current_located,
-            bool(current),
-            self._feed["assessment_complete"],
-        )
         danger_current = bool(
             self._source_current(snapshots["rfs_fdr_toban"], parsed["rfs_fdr_toban"])
-            and any(self._danger[day].get("available") for day in ("today", "tomorrow"))
+            and any(danger[day].get("available") for day in ("today", "tomorrow"))
         )
-        danger_events = await self._async_track_danger_lifecycle(danger_current)
-        self.last_events, self.last_danger_events = tuple(events), tuple(danger_events)
-        await self._async_emit_events(events, danger_events)
-        return self._compose_data()
+        return JurisdictionSnapshot(
+            profile=profile,
+            incidents=all_items,
+            current_incidents=current_items,
+            feed=self._compose_feed(
+                snapshots,
+                parsed["rfs_cap"],
+                parsed["rfs_geojson"],
+                parsed["rfs_incident_alerts"],
+                profile,
+            ),
+            danger=danger,
+            warnings=tuple(warnings.metadata.get("warnings", [])) if warnings else (),
+            snapshot_current=bool(current),
+            danger_current=danger_current,
+        )
 
-    async def _async_update_regional_data(self) -> dict[str, Any]:
-        profile = self.jurisdiction
+    async def _async_collect_regional(
+        self, profile: Jurisdiction
+    ) -> JurisdictionSnapshot:
         parsers = {
             feed.name: partial(
                 _parse_regional_cap
@@ -296,7 +376,6 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
             )
         }
-        self._parse_errors = {}
         parsed = {}
         for name, parser in parsers.items():
             result = self._parse(name, snapshots[name], parser)
@@ -312,25 +391,13 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             merged = merge_incidents(merged, result.incidents)
         for result in current.values():
             current_merged = merge_incidents(current_merged, result.incidents)
-        _located, monitored = self._locate_incidents(merged)
-        current_located, current_monitored = self._locate_incidents(current_merged)
-        self._set_display_incidents(monitored)
-        self._danger = _unknown_danger()
-        self._danger["district"] = "Not available for this jurisdiction"
-        self._danger["source_note"] = (
-            "Use the official state or territory fire-danger source."
+        return JurisdictionSnapshot(
+            profile=profile,
+            incidents=merged,
+            current_incidents=current_merged,
+            feed=self._compose_regional_feed(snapshots, parsed, profile),
+            snapshot_current=bool(current),
         )
-        self._warnings = []
-        self._feed = self._compose_regional_feed(snapshots, parsed)
-        events = await self._async_track_lifecycle(
-            current_monitored,
-            current_located,
-            bool(current),
-            self._feed["assessment_complete"],
-        )
-        self.last_events, self.last_danger_events = tuple(events), ()
-        await self._async_emit_events(events, [])
-        return self._compose_data()
 
     def _source_current(self, snapshot: FeedSnapshot, parsed: Any) -> bool:
         if parsed is None or not snapshot.response_received:
@@ -364,14 +431,17 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     def _compose_regional_feed(
-        self, snapshots: dict[str, FeedSnapshot], parsed_feeds: dict[str, Any]
+        self,
+        snapshots: dict[str, FeedSnapshot],
+        parsed_feeds: dict[str, Any],
+        profile: Jurisdiction,
     ) -> dict[str, Any]:
-        profile = self.jurisdiction
         return self._feed_health(
             snapshots,
             parsed_feeds,
             tuple(feed.name for feed in profile.feeds),
             profile.agency,
+            profile,
         )
 
     def _feed_health(
@@ -380,6 +450,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         parsed: dict[str, Any],
         required: tuple[str, ...],
         source: str,
+        profile: Jurisdiction,
     ) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
         available = [name for name in required if parsed.get(name) is not None]
@@ -430,8 +501,8 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "age_seconds": age,
             "stale_after_seconds": threshold,
             "source_name": source,
-            "official_url": self.jurisdiction.official_url,
-            "attribution": self.jurisdiction.attribution,
+            "official_url": profile.official_url,
+            "attribution": profile.attribution,
             "cross_check": {
                 "feed_count": len(required),
                 "available_count": len(available),
@@ -540,7 +611,9 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cap: Any | None,
         geojson: Any | None,
         supplemental: Any | None = None,
+        profile: Jurisdiction | None = None,
     ) -> dict[str, Any]:
+        profile = profile or jurisdiction_for("NSW")
         result = self._feed_health(
             snapshots,
             {
@@ -550,6 +623,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             },
             ("rfs_cap", "rfs_geojson", "rfs_incident_alerts"),
             "NSW RFS official incident feeds",
+            profile,
         )
         cap_ids = {item.id for item in cap.incidents} if cap else set()
         geo_ids = {item.id for item in geojson.incidents} if geojson else set()
@@ -562,6 +636,98 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
         )
         return result
+
+    def _compose_combined_feed(
+        self, results: tuple[JurisdictionSnapshot, ...]
+    ) -> dict[str, Any]:
+        """Combine publisher health without hiding a partial jurisdiction outage."""
+        feeds = [result.feed for result in results]
+        statuses = [str(feed.get("status", "unavailable")) for feed in feeds]
+        if all(status == "fresh" for status in statuses):
+            status = "fresh"
+        elif all(status == "unavailable" for status in statuses):
+            status = "unavailable"
+        elif not any(feed.get("current_incident_feeds") for feed in feeds) and any(
+            state == "stale" for state in statuses
+        ):
+            status = "stale"
+        else:
+            status = "degraded"
+
+        def latest(key: str) -> str | None:
+            values = [
+                parsed
+                for feed in feeds
+                if (parsed := _as_datetime(feed.get(key))) is not None
+            ]
+            return _iso(max(values)) if values else None
+
+        sources: dict[str, dict[str, Any]] = {}
+        current: list[str] = []
+        official_sources: list[dict[str, Any]] = []
+        for result in results:
+            current.extend(result.feed.get("current_incident_feeds", []))
+            for name, detail in result.feed.get("sources", {}).items():
+                sources[name] = {**dict(detail), "jurisdiction": result.profile.code}
+            official_sources.append(
+                {
+                    "jurisdiction": result.profile.code,
+                    "jurisdiction_name": result.profile.name,
+                    "source_name": result.profile.agency,
+                    "official_url": result.profile.official_url,
+                    "attribution": result.profile.attribution,
+                    "status": result.feed.get("status", "unavailable"),
+                }
+            )
+
+        primary = results[0].profile
+        complete = bool(results) and all(
+            feed.get("assessment_complete", False) for feed in feeds
+        )
+        available_count = sum(
+            int(feed.get("cross_check", {}).get("available_count", 0)) for feed in feeds
+        )
+        feed_count = sum(
+            int(feed.get("cross_check", {}).get("feed_count", 0)) for feed in feeds
+        )
+        return {
+            "status": status,
+            "assessment_complete": complete,
+            "current_incident_feeds": current,
+            "last_successful_update": latest("last_successful_update"),
+            "data_generated_at": latest("data_generated_at"),
+            "age_seconds": min(
+                (
+                    float(feed["age_seconds"])
+                    for feed in feeds
+                    if feed.get("age_seconds") is not None
+                ),
+                default=None,
+            ),
+            "stale_after_seconds": int(
+                self.config.get(CONF_STALE_AFTER, DEFAULT_STALE_AFTER_MINUTES)
+            )
+            * 60,
+            "source_name": " + ".join(result.profile.agency for result in results),
+            "official_url": primary.official_url,
+            "attribution": " | ".join(result.profile.attribution for result in results),
+            "jurisdictions": [result.profile.code for result in results],
+            "official_sources": official_sources,
+            "cross_check": {
+                "jurisdiction_count": len(results),
+                "complete_jurisdiction_count": sum(
+                    bool(feed.get("assessment_complete", False)) for feed in feeds
+                ),
+                "feed_count": feed_count,
+                "available_count": available_count,
+            },
+            "sources": sources,
+            "message": (
+                None
+                if complete
+                else "One or more selected jurisdictions are delayed or unavailable; absence of warnings is not confirmed."
+            ),
+        }
 
     def _compose_data(self) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
@@ -579,6 +745,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         status = self._summary_status(qualifying)
         profile = self.jurisdiction
+        profiles = self.jurisdictions
         recommended = _recommended_action(status)
         display_incidents = sort_incidents_by_distance(self._incidents)
         display_planned = sort_incidents_by_distance(self._planned)
@@ -607,6 +774,9 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "jurisdiction": profile.code,
             "jurisdiction_name": profile.name,
             "official_source_name": profile.agency,
+            "jurisdictions": [item.code for item in profiles],
+            "jurisdiction_names": [item.name for item in profiles],
+            "official_sources": self._feed.get("official_sources", []),
             "location_name": location_name,
             "zone_entity_id": zone_entity_id,
             "monitored_location": {
@@ -627,7 +797,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "fire_weather_warnings": self._warnings,
             "fire_weather_warnings_url": (
                 OFFICIAL_BOM_WARNINGS_URL
-                if profile.code == "NSW"
+                if any(item.code == "NSW" for item in profiles)
                 else profile.official_url
             ),
             "feed": self._feed,
@@ -648,7 +818,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ][:SUMMARY_INCIDENT_LIMIT],
             "alert_targets": list(alert_targets),
             "disclaimer": (
-                f"Supplementary awareness only. Check {profile.agency}, your "
+                f"Supplementary awareness only. Check {self._feed['source_name']}, your "
                 "official emergency app, local radio and emergency instructions."
             ),
             "last_updated": now.isoformat(),
@@ -866,6 +1036,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         for event in events:
             notification_allowed = self._notification_allowed(event)
+            official_url = self._event_official_url(event)
             payload = {
                 "alert_kind": "incident",
                 "entry_id": self.entry.entry_id,
@@ -888,7 +1059,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     f"australian-fire-watch-{self.entry.entry_id}-{event.incident_id}"
                 ),
                 "test": False,
-                "official_url": self.jurisdiction.official_url,
+                "official_url": official_url,
             }
             self._outbox.discard_tag(payload["notification_tag"])
             payloads.append(payload)
@@ -932,6 +1103,13 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.hass.bus.async_fire(EVENT_ALERT, payload)
         await self._async_flush_notifications()
 
+    def _event_official_url(self, event: LifecycleEvent) -> str:
+        """Return the affected publisher map, including resolved incidents."""
+        if event.incident and event.incident.official_url:
+            return event.incident.official_url
+        previous_url = str((event.previous or {}).get("official_url") or "").strip()
+        return previous_url or self.jurisdiction.official_url
+
     def _notification_allowed(self, event: LifecycleEvent) -> bool:
         if event.lifecycle in {
             "escalated",
@@ -958,6 +1136,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not services:
             return
         incident = event.incident
+        official_url = self._event_official_url(event)
         if incident is None:
             previous_title = str(
                 (event.previous or {}).get("title") or event.incident_id
@@ -972,7 +1151,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 {
                     "action": "URI",
                     "title": "Open official map",
-                    "uri": self.jurisdiction.official_url,
+                    "uri": official_url,
                 }
             ]
         elif event.lifecycle == "left_radius":
@@ -986,7 +1165,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 {
                     "action": "URI",
                     "title": "Open official map",
-                    "uri": self.jurisdiction.official_url,
+                    "uri": official_url,
                 }
             ]
         else:
@@ -1016,7 +1195,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 {
                     "action": "URI",
                     "title": "Open official map",
-                    "uri": self.jurisdiction.official_url,
+                    "uri": official_url,
                 },
             ]
             if incident.warning_level != WarningLevel.EMERGENCY_WARNING:
@@ -1036,7 +1215,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "tag": f"australian-fire-watch-{self.entry.entry_id}-{event.incident_id}",
             "group": f"australian-fire-watch-{self.entry.entry_id}",
             "url": f"/{self.entry.entry_id and 'australian-fire-watch'}",
-            "clickAction": self.jurisdiction.official_url,
+            "clickAction": official_url,
             "actions": actions,
         }
         priority = incident_notification_priority(event, test=test)

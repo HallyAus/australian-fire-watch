@@ -685,6 +685,12 @@ const normalizeModel = (hass, config = {}) => {
     ),
     jurisdiction: firstPresent(attributes.jurisdiction, "NSW"),
     jurisdictionName: firstPresent(attributes.jurisdiction_name, "New South Wales"),
+    jurisdictions: (() => {
+      const selected = asArray(attributes.jurisdictions).map((item) => String(item));
+      return selected.length
+        ? selected
+        : [String(firstPresent(attributes.jurisdiction, "NSW"))];
+    })(),
     officialWarning,
     summaryText: firstPresent(attributes.summary, attributes.status_summary),
     recommendedAction: firstPresent(
@@ -761,6 +767,15 @@ const normalizeModel = (hass, config = {}) => {
         attributes.official_source_name,
         "Official emergency service",
       ),
+      officialSources: asArray(
+        firstPresent(feedAttributes.official_sources, attributes.official_sources),
+      ).map((source) => ({
+        jurisdiction: firstPresent(source?.jurisdiction, ""),
+        sourceName: firstPresent(source?.source_name, "Official emergency service"),
+        officialUrl: safeUrl(source?.official_url, DEFAULT_RFS_URL),
+        attribution: firstPresent(source?.attribution, source?.source_name),
+        status: firstPresent(source?.status, "unknown"),
+      })),
       geoLocationSource: firstPresent(
         config.geo_location_source,
         feedAttributes.geo_location_source,
@@ -2324,16 +2339,34 @@ const renderHealth = (model, busy) => {
         </div>
         ${model.feed.message ? `<p class="notice ${model.feed.stale ? "error" : ""}">${escapeHtml(model.feed.message)}</p>` : ""}
         <div class="official-links">
-          <a class="button-link" href="${escapeHtml(
-            model.feed.officialUrl,
-          )}" target="_blank" rel="noopener noreferrer">Open ${escapeHtml(model.feed.sourceName)} ${icon("external")}</a>
-          ${model.jurisdiction === "NSW" ? `<a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">Fire danger ratings ${icon("external")}</a><a class="button-link" href="${DEFAULT_BOM_URL}" target="_blank" rel="noopener noreferrer">BOM NSW warnings ${icon("external")}</a>` : ""}
+          ${(
+            model.feed.officialSources.length
+              ? model.feed.officialSources
+              : [{ sourceName: model.feed.sourceName, officialUrl: model.feed.officialUrl }]
+          )
+            .map(
+              (source) => `<a class="button-link" href="${escapeHtml(
+                source.officialUrl,
+              )}" target="_blank" rel="noopener noreferrer">Open ${escapeHtml(
+                source.sourceName,
+              )} ${icon("external")}</a>`,
+            )
+            .join("")}
+          ${model.jurisdictions.includes("NSW") ? `<a class="button-link" href="${DEFAULT_RATINGS_URL}" target="_blank" rel="noopener noreferrer">Fire danger ratings ${icon("external")}</a><a class="button-link" href="${DEFAULT_BOM_URL}" target="_blank" rel="noopener noreferrer">BOM NSW warnings ${icon("external")}</a>` : ""}
         </div>
-        <p class="source-attribution"><a href="${escapeHtml(
-          model.feed.officialUrl,
-        )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-          model.feed.attribution,
-        )}</a></p>
+        <p class="source-attribution">${(
+          model.feed.officialSources.length
+            ? model.feed.officialSources
+            : [{ attribution: model.feed.attribution, officialUrl: model.feed.officialUrl }]
+        )
+          .map(
+            (source) => `<a href="${escapeHtml(
+              source.officialUrl,
+            )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+              source.attribution,
+            )}</a>`,
+          )
+          .join(" · ")}</p>
         <details>
           <summary>Test assigned alert delivery</summary>
           <p class="subtle small">Tests are clearly labelled and use your configured alert automation. They do not create an official warning.</p>
