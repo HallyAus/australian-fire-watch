@@ -1,6 +1,6 @@
 # Australian Fire Watch status
 
-## Unreleased event-map and branding refresh
+## 1.2.0 event-map and branding refresh
 
 - Native Home Assistant map markers now use different icons for bush or
   vegetation fire, grass fire, planned burns, other fire, and unknown records.
