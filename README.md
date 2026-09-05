@@ -39,8 +39,8 @@ Until the repository is listed in HACS defaults:
 2. Add https://github.com/HallyAus/australian-fire-watch as an **Integration**.
 3. Search for **Australian Fire Watch**, download it, and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration**.
-5. Select **Australian Fire Watch**, choose the state or territory containing
-   the monitored zone, and complete the setup.
+5. Select **Australian Fire Watch**, choose every state or territory that could
+   affect the monitored zone, and complete the setup.
 6. Open **Australian Fire Watch** from the sidebar after the first refresh.
 
 The dashboard ships inside the integration. No manual resource, card download,
@@ -87,6 +87,12 @@ The bundled dashboard strategy is also available:
 Australian emergency data is published separately by each jurisdiction, so
 there is no single national incident schema. Australian Fire Watch uses an
 explicit adapter for each documented public product:
+
+One zone can monitor multiple jurisdictions. This is intended for border
+communities: for example, a Southern Gold Coast zone can select both **QLD** and
+**NSW** and apply one monitoring radius to the combined official incident feeds.
+If any selected jurisdiction is delayed or unavailable, the integration will
+not publish a confirmed no-warning state from the remaining feeds.
 
 | Jurisdiction | Publisher and product |
 | --- | --- |
@@ -170,7 +176,9 @@ UI setup is recommended. YAML import is also supported:
     australian_fire_watch:
       name: Home
       zone: zone.home
-      jurisdiction: NSW
+      jurisdictions:
+        - NSW
+        - QLD
       fire_danger_district: Greater Sydney Region
       monitor_radius_km: 150
       emergency_radius_km: 100
@@ -180,8 +188,9 @@ UI setup is recommended. YAML import is also supported:
       stale_after_minutes: 45
       enable_bom_enrichment: true
 
-For non-NSW entries, omit fire_danger_district; NSW-only enrichment is
-automatically disabled regardless of the checkbox.
+For selections without NSW, omit fire_danger_district; NSW-only enrichment is
+automatically disabled regardless of the checkbox. The legacy singular
+`jurisdiction` YAML key remains accepted and is migrated to a one-item list.
 
 ## Migration from a legacy RFS dashboard
 

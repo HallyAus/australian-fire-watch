@@ -242,6 +242,17 @@ class IncidentModelTests(unittest.TestCase):
         self.assertEqual((), events)
         self.assertEqual(0, records[incident.id]["missing_count"])
 
+    def test_lifecycle_snapshot_retains_incident_official_url(self) -> None:
+        incident = Incident(
+            "qld-one",
+            "Border fire",
+            official_url="https://www.fire.qld.gov.au/Current-Incidents",
+        )
+        self.assertEqual(
+            incident.official_url,
+            incident_snapshot(incident)["official_url"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

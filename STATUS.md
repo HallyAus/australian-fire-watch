@@ -1,5 +1,15 @@
 # Australian Fire Watch status
 
+## 1.1.0 cross-border coverage
+
+- A single monitored zone can combine any selection of Australian state and
+  territory incident feeds, including NSW + QLD for Southern Gold Coast users.
+- One set of monitoring and alert radii is applied across jurisdiction borders.
+- Partial failure in any selected jurisdiction prevents a false confirmed-clear
+  state while healthy feeds can still raise or escalate a current warning.
+- Existing 1.0.x single-jurisdiction config entries migrate automatically.
+- The bundled dashboard links every selected official publisher.
+
 ## 1.0.1 reliability fixes
 
 - Warning entity availability is separate from a valid no-warning assessment.

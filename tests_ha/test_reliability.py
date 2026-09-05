@@ -27,6 +27,9 @@ def entity_id(hass, entry, domain, key):
 
 
 async def test_setup_reload_unload_and_services(hass, entry, loaded):
+    assert entry.version == 2
+    assert entry.data["jurisdictions"] == ["NSW"]
+    assert "jurisdiction" not in entry.data
     assert hass.services.has_service(DOMAIN, "test_alert")
     assert (
         hass.states.get(entity_id(hass, entry, "binary_sensor", "active_warning")).state
@@ -145,6 +148,69 @@ async def test_regional_warning_survives_incident_feed_outage(
     assert any(
         item.incident_id == "QLD-new" and item.qualifies_for_alert
         for item in loaded.last_events
+    )
+
+
+@pytest.mark.parametrize("entry", [{"jurisdictions": ["QLD", "NSW"]}], indirect=True)
+async def test_cross_border_entry_combines_nsw_and_qld(hass, entry, loaded, feeds):
+    qld = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "properties": {
+                    "UniqueID": "border-qld",
+                    "EventType": "Fire",
+                    "WarningLevel": "Emergency Warning",
+                    "WarningTitle": "Queensland border bushfire",
+                },
+                "geometry": {"type": "Point", "coordinates": [151.0, -33.0]},
+            }
+        ],
+    }
+    feeds["qld_warnings"] = snapshot("qld_warnings", json.dumps(qld).encode())
+    for name in ("rfs_cap", "rfs_incident_alerts"):
+        feeds[name] = snapshot(name, cap("border-nsw", "Watch and Act"))
+    feeds["rfs_geojson"] = snapshot("rfs_geojson", geo("border-nsw", "Watch and Act"))
+
+    await loaded.async_refresh()
+    await hass.async_block_till_done()
+
+    incident_ids = {item["id"] for item in loaded.data["incidents"]}
+    assert {"QLD-border-qld", "border-nsw"} <= incident_ids
+    assert loaded.data["jurisdictions"] == ["QLD", "NSW"]
+    assert loaded.data["feed"]["assessment_complete"]
+    assert {
+        item["jurisdiction"] for item in loaded.data["feed"]["official_sources"]
+    } == {"QLD", "NSW"}
+
+
+@pytest.mark.parametrize("entry", [{"jurisdictions": ["QLD", "NSW"]}], indirect=True)
+async def test_cross_border_outage_cannot_confirm_all_clear(loaded, feeds):
+    qld = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "properties": {
+                    "UniqueID": "border-qld",
+                    "EventType": "Fire",
+                    "WarningLevel": "Advice",
+                    "WarningTitle": "Queensland border bushfire",
+                },
+                "geometry": {"type": "Point", "coordinates": [151.0, -33.0]},
+            }
+        ],
+    }
+    feeds["qld_warnings"] = snapshot("qld_warnings", json.dumps(qld).encode())
+    await loaded.async_refresh()
+
+    feeds["qld_incidents"] = snapshot("qld_incidents", None, current=False)
+    feeds["qld_warnings"] = snapshot("qld_warnings", None, current=False)
+    await loaded.async_refresh()
+
+    assert loaded.data["status"] == "unavailable"
+    assert not loaded.data["feed"]["assessment_complete"]
+    assert loaded.data["last_known_warning_records"][0]["incident_id"] == (
+        "QLD-border-qld"
     )
 
 

@@ -56,11 +56,12 @@ class FireWatchSensorBase(CoordinatorEntity[FireWatchCoordinator], SensorEntity)
 
     @property
     def device_info(self) -> DeviceInfo:
+        codes = "+".join(item.code for item in self.coordinator.jurisdictions)
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
             name=self.coordinator.entry.title,
             manufacturer="Australian Fire Watch community project",
-            model=f"Official {self.coordinator.jurisdiction.code} fire feed monitor",
+            model=f"Official {codes} fire feed monitor",
             sw_version=VERSION,
             configuration_url=self.coordinator.jurisdiction.official_url,
         )

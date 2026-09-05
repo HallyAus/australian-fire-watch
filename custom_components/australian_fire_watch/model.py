@@ -387,6 +387,7 @@ def incident_snapshot(incident: Incident, *, qualified: bool = False) -> dict[st
         "within_warning_area": incident.within_warning_area,
         "distance_km": incident.distance_km,
         "title": incident.title,
+        "official_url": incident.official_url,
         "qualified": bool(qualified),
         "missing_count": 0,
     }

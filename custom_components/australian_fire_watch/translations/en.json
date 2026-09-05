@@ -4,11 +4,11 @@
     "step": {
       "user": {
         "title": "Monitor an Australian location",
-        "description": "Select the state or territory containing this zone. Uses anonymous official emergency-service feeds and remains supplementary to official warning channels.",
+        "description": "Select every state or territory that could affect this zone. Border locations can combine neighbouring jurisdictions under one monitoring radius. Uses anonymous official emergency-service feeds and remains supplementary to official warning channels.",
         "data": {
           "name": "Location name",
           "zone": "Home Assistant zone",
-          "jurisdiction": "State or territory",
+          "jurisdictions": "States and territories to monitor",
           "fire_danger_district": "NSW fire weather district (NSW only)",
           "weather_entity": "Weather entity (optional context only)",
           "readiness_entities": "Household readiness checkboxes (optional)",
@@ -27,18 +27,18 @@
       "invalid_settings": "Use fully-qualified notify.* services and make the monitoring radius at least as large as every alert radius."
     },
     "abort": {
-      "already_configured": "This state or territory and zone are already configured."
+      "already_configured": "This jurisdiction selection and zone are already configured."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Australian Fire Watch options",
-        "description": "Emergency Warning cannot be snoozed; escalation always overrides acknowledgement or snooze.",
+        "description": "Select all relevant jurisdictions for border coverage. Emergency Warning cannot be snoozed; escalation always overrides acknowledgement or snooze.",
         "data": {
           "name": "Location name",
           "zone": "Home Assistant zone",
-          "jurisdiction": "State or territory",
+          "jurisdictions": "States and territories to monitor",
           "fire_danger_district": "NSW fire weather district (NSW only)",
           "weather_entity": "Weather entity (optional context only)",
           "readiness_entities": "Household readiness checkboxes (optional)",
@@ -54,7 +54,8 @@
       }
     },
     "error": {
-      "invalid_settings": "Use fully-qualified notify.* services and make the monitoring radius at least as large as every alert radius."
+      "invalid_settings": "Use fully-qualified notify.* services and make the monitoring radius at least as large as every alert radius.",
+      "duplicate_selection": "Another entry already monitors this zone, jurisdiction selection, and NSW district."
     }
   }
 }

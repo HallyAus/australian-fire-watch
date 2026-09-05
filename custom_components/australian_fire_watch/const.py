@@ -8,13 +8,15 @@ from typing import Any
 
 DOMAIN = "australian_fire_watch"
 NAME = "Australian Fire Watch"
-VERSION = "1.0.1"
-CONFIG_ENTRY_VERSION = 1
+VERSION = "1.1.0"
+CONFIG_ENTRY_VERSION = 2
 
 PLATFORMS = ["sensor", "binary_sensor", "geo_location"]
 
 CONF_NAME = "name"
+# ``jurisdiction`` is retained for config-entry/YAML migration from 1.0.x.
 CONF_JURISDICTION = "jurisdiction"
+CONF_JURISDICTIONS = "jurisdictions"
 CONF_ZONE = "zone"
 CONF_DISTRICT = "fire_danger_district"
 CONF_WEATHER_ENTITY = "weather_entity"
@@ -41,13 +43,35 @@ DEFAULT_STALE_AFTER_MINUTES = 45
 DEFAULT_ENABLE_BOM = True
 
 
+def jurisdiction_codes(data: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return canonical selected jurisdiction codes for old and new entries."""
+    value = data.get(CONF_JURISDICTIONS, data.get(CONF_JURISDICTION))
+    if isinstance(value, str) or value is None:
+        values = [value or DEFAULT_JURISDICTION]
+    else:
+        try:
+            values = list(value)
+        except TypeError:
+            values = [DEFAULT_JURISDICTION]
+    allowed = {"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"}
+    result = tuple(
+        dict.fromkeys(
+            code
+            for item in values
+            if (code := str(item or "").strip().upper()) in allowed
+        )
+    )
+    return result or (DEFAULT_JURISDICTION,)
+
+
 def config_entry_unique_id(data: Mapping[str, Any]) -> str:
     """Return the stable identity used by UI and YAML-configured entries."""
-    jurisdiction = str(data.get(CONF_JURISDICTION, DEFAULT_JURISDICTION)).upper()
+    jurisdictions = tuple(sorted(jurisdiction_codes(data)))
     district = (
-        str(data.get(CONF_DISTRICT, DEFAULT_DISTRICT)) if jurisdiction == "NSW" else ""
+        str(data.get(CONF_DISTRICT, DEFAULT_DISTRICT)) if "NSW" in jurisdictions else ""
     )
-    return f"{data.get(CONF_ZONE, DEFAULT_ZONE)}|{jurisdiction}|{district}".casefold()
+    selection = ",".join(jurisdictions)
+    return f"{data.get(CONF_ZONE, DEFAULT_ZONE)}|{selection}|{district}".casefold()
 
 
 MIN_UPDATE_INTERVAL = timedelta(minutes=5)
