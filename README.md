@@ -1,11 +1,32 @@
-# Australian Fire Watch for Home Assistant
+<p align="center">
+  <img src="custom_components/australian_fire_watch/brand/icon.png" width="128" height="128" alt="Australian Fire Watch logo">
+</p>
 
-☕ [Support Australian Fire Watch on Buy Me a Coffee](https://buymeacoffee.com/hallyaus)
+<h1 align="center">Australian Fire Watch</h1>
 
-Australian Fire Watch is a HACS-installable Home Assistant integration and
-mobile-first dashboard for bushfire awareness across every Australian state and
-territory. It normalises official incident feeds, ranks nearby warnings, creates
-native geo-location entities, and can send lifecycle-aware notifications.
+<p align="center">
+  A Home Assistant integration and mobile-first dashboard for bushfire awareness
+  across every Australian state and territory.
+</p>
+
+<p align="center">
+  <a href="https://github.com/HallyAus/australian-fire-watch/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/HallyAus/australian-fire-watch?display_name=tag&amp;sort=semver"></a>
+  <a href="https://github.com/HallyAus/australian-fire-watch/releases"><img alt="HACS downloads" src="https://img.shields.io/github/downloads/HallyAus/australian-fire-watch/total?label=HACS%20downloads"></a>
+  <a href="https://github.com/HallyAus/australian-fire-watch/actions/workflows/validate.yml"><img alt="Validation" src="https://img.shields.io/github/actions/workflow/status/HallyAus/australian-fire-watch/validate.yml?branch=main&amp;label=validation"></a>
+  <img alt="Minimum Home Assistant version 2025.12" src="https://img.shields.io/badge/Home%20Assistant-2025.12%2B-18BCF2?logo=homeassistant&amp;logoColor=white">
+  <img alt="HACS custom repository" src="https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistantcommunitystore&amp;logoColor=white">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/github/license/HallyAus/australian-fire-watch"></a>
+  <a href="https://github.com/HallyAus/australian-fire-watch/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/HallyAus/australian-fire-watch"></a>
+  <a href="https://github.com/HallyAus/australian-fire-watch/issues"><img alt="Open issues" src="https://img.shields.io/github/issues/HallyAus/australian-fire-watch"></a>
+  <a href="https://github.com/HallyAus/australian-fire-watch/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/HallyAus/australian-fire-watch"></a>
+</p>
+
+<p align="center">
+  <a href="https://buymeacoffee.com/hallyaus"><img alt="Support Australian Fire Watch on Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-Support-FFDD00?logo=buymeacoffee&amp;logoColor=000000"></a>
+</p>
+
+Australian Fire Watch normalises official incident feeds, ranks nearby warnings,
+creates native geo-location entities, and can send lifecycle-aware notifications.
 
 The Home Assistant integration domain is `australian_fire_watch`.
 
@@ -16,6 +37,23 @@ The Home Assistant integration domain is `australian_fire_watch`.
 > missing, stale, or unavailable data as safe. Keep your jurisdiction's official
 > emergency app and alerts enabled, listen to local radio, and follow emergency
 > instructions. In a life-threatening emergency call Triple Zero (000).
+
+## Project at a glance
+
+| Metric | Value |
+| --- | --- |
+| Minimum Home Assistant version | 2025.12.0 (enforced by HACS) |
+| Runtime validation | Home Assistant 2026.9.0 |
+| Australian coverage | ACT, NSW, NT, QLD, SA, TAS, VIC, and WA |
+| Feed refresh interval | Five minutes |
+| Installation | HACS custom repository or manual copy |
+| Dashboard | Bundled sidebar dashboard, strategy, and reusable card |
+| Authentication | No API key required for the documented public feeds |
+
+The **HACS downloads** badge is the cumulative GitHub download count for the
+published `australian_fire_watch.zip` release assets. It is a useful public
+distribution metric, but it is not a count of unique households or active Home
+Assistant installations.
 
 ## What is included
 
@@ -30,6 +68,21 @@ The Home Assistant integration domain is `australian_fire_watch`.
 - Home Assistant's native map card, using the monitored zone as the focus and
   incident entities as non-focusing overlays.
 - NSW fire-danger, Total Fire Ban, FBI, and BOM warning enrichment.
+
+## Screenshots
+
+### Desktop command centre
+
+![Australian Fire Watch desktop dashboard showing the warning summary, monitored radius, metrics, map, nearby incidents, feed health, readiness and notification controls](docs/images/dashboard-desktop.png)
+
+### Mobile command centre
+
+<p align="center">
+  <img src="docs/images/dashboard-mobile.png" width="410" alt="Australian Fire Watch mobile dashboard showing the same included command centre in a narrow Home Assistant layout">
+</p>
+
+Screenshots use deterministic demonstration data. The dashboard and card shown
+above ship with the integration; no separate frontend download is required.
 
 ## Install with HACS
 
@@ -88,11 +141,11 @@ Australian emergency data is published separately by each jurisdiction, so
 there is no single national incident schema. Australian Fire Watch uses an
 explicit adapter for each documented public product:
 
-One zone can monitor multiple jurisdictions. This is intended for border
-communities: for example, a Southern Gold Coast zone can select both **QLD** and
-**NSW** and apply one monitoring radius to the combined official incident feeds.
-If any selected jurisdiction is delayed or unavailable, the integration will
-not publish a confirmed no-warning state from the remaining feeds.
+Select every state or territory covered by the zone's monitoring radius. Most
+people need one jurisdiction; border communities may need two or more. The same
+monitoring radius is applied to the combined official incident feeds. If any
+selected jurisdiction is delayed or unavailable, the integration will not
+publish a confirmed no-warning state from the remaining feeds.
 
 | Jurisdiction | Publisher and product |
 | --- | --- |

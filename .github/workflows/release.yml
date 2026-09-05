@@ -1,0 +1,42 @@
+name: Release package
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  hacs_zip:
+    name: Publish HACS integration ZIP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+
+      - name: Validate the release version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          release_version="${RELEASE_TAG#v}"
+          manifest_version="$(python -c 'import json; print(json.load(open("custom_components/australian_fire_watch/manifest.json", encoding="utf-8"))["version"])')"
+          if [[ "$release_version" != "$manifest_version" ]]; then
+            echo "Release tag $RELEASE_TAG does not match manifest version $manifest_version" >&2
+            exit 1
+          fi
+
+      - name: Build the HACS ZIP
+        shell: bash
+        run: |
+          cd custom_components/australian_fire_watch
+          zip -r "$GITHUB_WORKSPACE/australian_fire_watch.zip" .
+
+      - name: Attach the ZIP to the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" "$GITHUB_WORKSPACE/australian_fire_watch.zip"
