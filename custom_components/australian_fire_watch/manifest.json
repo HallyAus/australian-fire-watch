@@ -3,11 +3,11 @@
   "name": "Australian Fire Watch",
   "codeowners": ["@hallyaus"],
   "config_flow": true,
-  "dependencies": ["frontend", "geo_location", "http"],
+  "dependencies": ["frontend", "geo_location", "http", "lovelace"],
   "documentation": "https://github.com/hallyaus/australian-fire-watch",
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/hallyaus/australian-fire-watch/issues",
   "requirements": [],
-  "version": "1.2.0"
+  "version": "1.2.1"
 }

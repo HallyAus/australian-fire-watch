@@ -1,5 +1,17 @@
 # Australian Fire Watch status
 
+## 1.2.1 original-card startup and recovery
+
+- Register the bundled frontend during integration setup, before any external
+  feed refresh. A slow or failed first refresh cannot defer card registration.
+- Register and version the integration-owned Lovelace module automatically in
+  storage mode; preserve unrelated resources and user-owned YAML resource lists.
+- Retry a still-missing original card when returning to the dashboard, resuming
+  the app or reconnecting. Recovery is bounded and targets only this card's
+  missing-element error, never unrelated configuration errors.
+- Keep the original card layout, map, warning semantics and notifications intact.
+- Add startup/resource lifecycle and browser-event regression tests.
+
 ## 1.2.0 event-map and branding refresh
 
 - Native Home Assistant map markers now use different icons for bush or

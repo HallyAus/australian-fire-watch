@@ -35,9 +35,10 @@ const FIRE_WATCH_RECOVERY_DELAYS = Object.freeze([
   4000,
 ]);
 const FIRE_WATCH_RECOVERY_FLAG = Symbol.for(
-  "australian-fire-watch-card.recovery-scheduled",
+  "australian-fire-watch-card.recovery-scheduled.v2",
 );
-const fireWatchRecoveryAttempts = new WeakSet();
+// A dispatched event is only a request, not proof HA rebuilt the card.
+const fireWatchRecoveryAttempts = new WeakMap();
 
 const WARNING_WEIGHT = Object.freeze({
   emergency_warning: 4,
@@ -2975,8 +2976,20 @@ const dispatchFireWatchRebuild = (element) => {
 };
 
 const recoverFailedFireWatchCards = (root = document) => {
+  if (!customElements.get(FIRE_WATCH_CARD_TAG)) return 0;
   const elements = composedElements(root);
   let recovered = 0;
+  const requestRebuild = (element) => {
+    if (!element || element.isConnected === false) return false;
+    const lastAttempt = fireWatchRecoveryAttempts.get(element);
+    const now = Date.now();
+    if (lastAttempt !== undefined && now - lastAttempt < 1000) return false;
+    // Rate-limit a stuck wrapper, but allow retry if its listener was not ready.
+    fireWatchRecoveryAttempts.set(element, now);
+    if (dispatchFireWatchRebuild(element)) return true;
+    fireWatchRecoveryAttempts.delete(element);
+    return false;
+  };
   for (const wrapper of elements) {
     if (elementTagName(wrapper) !== "hui-card") continue;
     const config = wrapper.config || wrapper._config || {};
@@ -2984,27 +2997,22 @@ const recoverFailedFireWatchCards = (root = document) => {
     if (
       config.type !== FIRE_WATCH_CARD_TYPE ||
       !isMissingFireWatchElementError(errorElement) ||
-      fireWatchRecoveryAttempts.has(wrapper) ||
-      fireWatchRecoveryAttempts.has(errorElement)
+      wrapper.isConnected === false
     ) {
       continue;
     }
-    if (dispatchFireWatchRebuild(errorElement)) {
-      fireWatchRecoveryAttempts.add(wrapper);
-      fireWatchRecoveryAttempts.add(errorElement);
+    if (requestRebuild(errorElement)) {
       recovered += 1;
     }
   }
   for (const errorElement of elements) {
     if (
       !isMissingFireWatchElementError(errorElement) ||
-      fireWatchRecoveryAttempts.has(errorElement) ||
       errorElement.isConnected === false
     ) {
       continue;
     }
-    if (dispatchFireWatchRebuild(errorElement)) {
-      fireWatchRecoveryAttempts.add(errorElement);
+    if (requestRebuild(errorElement)) {
       recovered += 1;
     }
   }
@@ -3014,9 +3022,23 @@ const recoverFailedFireWatchCards = (root = document) => {
 const scheduleFireWatchCardRecovery = () => {
   if (window[FIRE_WATCH_RECOVERY_FLAG]) return;
   window[FIRE_WATCH_RECOVERY_FLAG] = true;
-  for (const delay of FIRE_WATCH_RECOVERY_DELAYS) {
-    window.setTimeout(() => recoverFailedFireWatchCards(), delay);
+  let scheduled = false;
+  const schedule = () => {
+    if (scheduled || document.visibilityState === "hidden") return;
+    scheduled = true;
+    for (const delay of FIRE_WATCH_RECOVERY_DELAYS) {
+      window.setTimeout(() => {
+        if (document.visibilityState !== "hidden") recoverFailedFireWatchCards();
+        if (delay === FIRE_WATCH_RECOVERY_DELAYS.at(-1)) scheduled = false;
+      }, delay);
+    }
+  };
+  // Mobile sessions can return to Home long after the initial recovery window.
+  for (const event of ["location-changed", "pageshow", "online", "connection-status"]) {
+    window.addEventListener(event, schedule);
   }
+  document.addEventListener("visibilitychange", schedule);
+  schedule();
 };
 
 const defineElement = (name, constructor) => {

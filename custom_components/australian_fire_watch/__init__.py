@@ -15,6 +15,8 @@ from homeassistant.components.frontend import (
     remove_extra_js_url,
 )
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.lovelace.const import LOVELACE_DATA
+from homeassistant.components.lovelace.resources import ResourceStorageCollection
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import Event, HomeAssistant, ServiceCall, callback
@@ -183,6 +185,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         },
     )
     domain_data.setdefault(DATA_PANEL_LOCK, asyncio.Lock())
+    # The original card must be loadable even while setup is waiting for an
+    # official feed, or when that first refresh has to be retried.
+    await _async_register_panel(hass)
     yaml_config = config.get(DOMAIN)
     if yaml_config:
         entries = yaml_config if isinstance(yaml_config, list) else [yaml_config]
@@ -208,6 +213,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         },
     )
     domain_data.setdefault(DATA_PANEL_LOCK, asyncio.Lock())
+    # Re-register after an entry reload, before any potentially slow I/O.
+    await _async_register_panel(hass)
     coordinator = FireWatchCoordinator(hass, entry)
     await coordinator.async_initialize()
     await coordinator.async_config_entry_first_refresh()
@@ -302,6 +309,7 @@ async def _async_register_panel(hass: HomeAssistant) -> None:
             # Static paths survive config-entry reloads until HA restarts.
             pass
         module_url = _frontend_module_url()
+        await _async_register_lovelace_resource(hass, module_url)
         if not data.get(DATA_FRONTEND_MODULE):
             # The panel js_url loads only after that panel is opened. This also
             # makes the masonry card available on a cold Home dashboard.
@@ -324,6 +332,36 @@ async def _async_register_panel(hass: HomeAssistant) -> None:
             require_admin=False,
         )
         data[DATA_PANEL] = True
+
+
+async def _async_register_lovelace_resource(hass: HomeAssistant, module_url: str) -> None:
+    """Persist the card's module, updating its cache key across HACS releases.
+
+    Extra modules in the HTML bootstrap are not sufficient for an already-open
+    or cached mobile frontend. Lovelace also needs its own resource metadata.
+    YAML resource collections remain user-owned; their extra-module path is
+    retained. Only exact same-origin paths belonging to this bundle are touched.
+    """
+    resources = hass.data[LOVELACE_DATA].resources
+    if not isinstance(resources, ResourceStorageCollection):
+        return
+    await resources.async_get_info()  # Load persisted items before inspecting.
+    path = f"{FRONTEND_URL_PATH}/{PANEL_JS_FILE}"
+    owned = [
+        item for item in resources.async_items()
+        if str(item.get("url", "")).split("?", 1)[0] == path
+    ]
+    if not owned:
+        await resources.async_create_item({"url": module_url, "res_type": "module"})
+        return
+    first, *duplicates = owned
+    if first.get("url") != module_url or first.get("type") != "module":
+        await resources.async_update_item(
+            first["id"], {"url": module_url, "res_type": "module"}
+        )
+    # Multiple old cache keys can race to define the same custom element.
+    for duplicate in duplicates:
+        await resources.async_delete_item(duplicate["id"])
 
 
 def _frontend_module_url() -> str:
