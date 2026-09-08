@@ -1,5 +1,19 @@
 # Australian Fire Watch status
 
+## 1.3.1 visible cameras and compact-card tidy-up
+
+- Show Watchtowers camera sites and branded VIEW buttons immediately in both
+  card layouts and incident cards, without a dropdown.
+- Replace the compact card's blue BOM image strip with a readable source link
+  in the footer, preserving attribution.
+- Tighten camera-section spacing and explanatory text, align site information
+  with the VIEW button on larger screens, and correct the singular site count.
+- Local validation: 87 Python unit tests and 10 frontend tests pass; Python
+  compilation, undefined-name lint, JavaScript syntax and JSON/YAML syntax pass.
+  A supplementary mypy run reports 26 typing errors in four unchanged backend
+  files, identical to the pre-change main revision; this UI patch does not
+  resolve those existing findings.
+
 ## 1.3.0 Central Watch camera links
 
 - Link current incidents to up to three nearby camera sites using the supplied

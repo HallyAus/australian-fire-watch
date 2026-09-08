@@ -1301,17 +1301,26 @@ const STYLES = `
   .incident-scanline .icon { width: 14px; height: 14px; }
   .incident-detail-drawer { margin-top: 7px; padding-top: 0; border-top: 0; }
   .incident-detail-drawer summary { min-height: 44px; color: var(--fw-link); font-size: .82rem; }
-  .camera-site { display: grid; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--fw-border); }
+  .camera-site { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding: 12px 0; border-bottom: 1px solid var(--fw-border); }
+  .camera-site:last-child { border-bottom: 0; padding-bottom: 0; }
+  .camera-site-copy { flex: 1 1 180px; display: grid; gap: 4px; min-width: 0; }
   .camera-site small { font-weight: 400; }
-  .camera-site > span, .camera-note { font-size: .8rem; }
-  .camera-matches { margin-top: 10px; }
-  .camera-matches summary { font-size: .82rem; overflow-wrap: anywhere; }
+  .camera-site-copy > span, .camera-note { font-size: .8rem; color: var(--fw-muted); }
+  .camera-note { margin: 10px 0 0; line-height: 1.4; }
+  .camera-matches { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--fw-border); }
+  .camera-matches h4 { margin: 0; font-size: .85rem; }
   .camera-brand { display: block; width: 280px; max-width: 100%; height: auto; background: #fff; padding: 8px; border-radius: 6px; }
   .camera-view-button { display: block; width: 280px; max-width: 100%; min-height: 44px; overflow: hidden; border-radius: 8px; }
   .camera-view-button:hover { filter: brightness(.94); }
   .camera-view-art { display: block; width: 100%; aspect-ratio: 5.2; min-height: 44px; object-fit: cover; object-position: center; }
-  .camera-network-brand { width: 220px; margin-top: 12px; }
-  .camera-network { padding: 0 12px 12px; }
+  .camera-network-brand { width: 160px; padding: 5px; }
+  .camera-network { padding: 14px 0; border-top: 1px solid var(--fw-border); }
+  .camera-network-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .camera-network-heading h3 { margin: 0; font-size: 1rem; }
+  .camera-network-heading > span { color: var(--fw-muted); font-size: .8rem; white-space: nowrap; }
+  .camera-network-intro { margin: 4px 0 0; font-size: .8rem; color: var(--fw-muted); }
+  .camera-provider-credit { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; color: var(--fw-muted); font-size: .75rem; }
+  .compact-card .camera-network { padding: 14px; }
   .incident-detail-drawer .incident-actions { margin-top: 7px; }
 
   .empty-state { padding: 18px; border: 1px dashed var(--fw-border); border-radius: 13px; color: var(--fw-muted); text-align: center; }
@@ -1465,19 +1474,18 @@ const STYLES = `
 
   .compact-feed-message { margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--fw-border); background: rgba(250,204,21,.09); color: var(--primary-text-color, #fff); font-size: .82rem; }
   .compact-bom-attribution {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
     min-height: 44px;
-    padding: 20px;
-    border-bottom: 1px solid var(--fw-border);
+    gap: 6px;
+    font-size: .75rem;
   }
-  .compact-bom-attribution img { display: block; width: 320px; max-width: 100%; height: auto; }
-  .compact-actions { gap: 8px; padding: 11px 12px; }
+  .compact-actions { align-items: stretch; gap: 8px; padding: 11px 12px; }
   .compact-actions .button-link { flex: 1 1 0; padding-inline: 10px; }
   .compact-actions .primary { flex-grow: 1.35; }
   .compact-disclaimer { margin: 0; padding: 0 14px 12px; color: var(--fw-muted); font-size: .75rem; }
-  .compact-attribution { margin: 0; padding: 0 14px 13px; color: var(--fw-muted); font-size: .64rem; line-height: 1.35; }
+  .compact-source-footer { padding: 0 14px 12px; color: var(--fw-muted); }
+  .compact-attribution { margin: 0; font-size: .72rem; line-height: 1.5; }
   .compact-attribution a { color: inherit; }
 
   .compact-setup { padding: 16px; }
@@ -1595,7 +1603,7 @@ const renderBomAttribution = () => `
 
 const renderCompactBomAttribution = () => `
   <a class="compact-bom-attribution" href="${BOM_ATTRIBUTION_URL}" target="_blank" rel="noopener noreferrer" aria-label="Bureau weather-data attribution information">
-    <img src="${BOM_ATTRIBUTION_IMAGE}" width="558" height="22" alt="Weather data sourced from the Bureau of Meteorology" />
+    Weather data: Bureau of Meteorology ${icon("external")}
   </a>
 `;
 
@@ -1705,30 +1713,32 @@ const renderCameraButton = (url, label) => `
 
 const renderCameraSites = (sites, reference) => asArray(sites).map((site) => `
   <div class="camera-site">
-    <strong>${escapeHtml(site.name)} <small>${escapeHtml(site.region)}</small></strong>
-    <span>${escapeHtml(site.distanceKm.toFixed(1))} km from ${escapeHtml(reference)}</span>
+    <div class="camera-site-copy">
+      <strong>${escapeHtml(site.name)} <small>${escapeHtml(site.region)}</small></strong>
+      <span>${escapeHtml(site.distanceKm.toFixed(1))} km from ${escapeHtml(reference)}</span>
+    </div>
     ${renderCameraButton(site.views[0].url, `View ${site.name} ${site.views[0].name} on Central Watch`)}
   </div>
 `).join("");
 
 const renderIncidentCameras = (incident) => !incident.cameras?.length ? "" : `
-  <details class="camera-matches">
-    <summary>Camera nearby · ${escapeHtml(incident.cameras[0].name)} · ${escapeHtml(incident.cameras[0].distanceKm.toFixed(1))} km from fire</summary>
+  <section class="camera-matches" aria-label="Cameras near this incident">
+    <h4>Nearby fire cameras</h4>
     ${renderCameraSites(incident.cameras, "reported fire location")}
-    <p class="camera-note">Central Watch · Proximity only. Visibility and camera direction may vary.</p>
-  </details>
+    <p class="camera-note">Central Watch · Visibility and camera direction may vary.</p>
+  </section>
 `;
 
 const renderCameraNetwork = (model) => !model.cameraNetwork ? "" : `
-  <details class="info-drawer camera-network">
-    <summary>Nearby cameras <span>${model.cameraNetwork.nearbySites.length} sites</span></summary>
-    <p>Camera links provided by Watchtowers Networks. Browse sites within your dashboard monitoring radius.</p>
+  <section class="camera-network" aria-label="Watchtowers cameras">
+    <header class="camera-network-heading"><h3>Watchtowers cameras</h3><span>${model.cameraNetwork.nearbySites.length} ${model.cameraNetwork.nearbySites.length === 1 ? "site" : "sites"}</span></header>
+    <p class="camera-network-intro">Central Watch views within your monitoring radius</p>
     ${model.cameraNetwork.nearbySites.length
       ? renderCameraSites(model.cameraNetwork.nearbySites, "monitored location")
       : `<p>No listed camera sites within this monitoring radius. The supplied network currently covers parts of NSW and ACT.</p>${renderCameraButton(CENTRAL_WATCH_URL, "View Central Watch camera network")}`}
-    <p class="camera-note">Locations supplied September 2026. Proximity does not confirm visibility, camera direction or online status.</p>
-    <img class="camera-brand camera-network-brand" src="/api/australian_fire_watch/frontend/watchtowers-networks.jpg" alt="Watchtowers Networks" loading="lazy" width="1280" height="246">
-  </details>
+    <p class="camera-note">Proximity only · Visibility and availability may vary.</p>
+    <div class="camera-provider-credit"><img class="camera-brand camera-network-brand" src="/api/australian_fire_watch/frontend/watchtowers-networks.jpg" alt="Watchtowers Networks" loading="lazy" width="1280" height="246"><span>Camera links generously provided by Watchtowers Networks.</span></div>
+  </section>
 `;
 
 const renderIncidentActions = (incident) => {
@@ -2183,13 +2193,6 @@ const renderCompact = (model, title, showMap = false) => {
             ? `<p class="compact-feed-message">${escapeHtml(feedMessage)}</p>`
             : ""
         }
-        ${
-          isPresent(model.today.fbi) ||
-          isPresent(model.tomorrow.fbi) ||
-          model.fireWeatherWarnings.length > 0
-            ? renderCompactBomAttribution()
-            : ""
-        }
         <nav class="compact-actions" aria-label="Fire Watch links">
           <a class="button-link primary" href="/australian-fire-watch">Open command centre</a>
           <a class="button-link" href="${escapeHtml(
@@ -2199,11 +2202,17 @@ const renderCompact = (model, title, showMap = false) => {
           )}</a>
         </nav>
         <p class="compact-disclaimer">Supplementary only — keep official emergency alerts enabled.</p>
+        <footer class="compact-source-footer">
         <p class="compact-attribution"><a href="${escapeHtml(
           model.feed.officialUrl,
         )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
           model.feed.attribution,
         )}</a></p>
+        ${
+          isPresent(model.today.fbi) || isPresent(model.tomorrow.fbi) || model.fireWeatherWarnings.length > 0
+            ? renderCompactBomAttribution() : ""
+        }
+        </footer>
       </article>
     </main>
   `;

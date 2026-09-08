@@ -14,16 +14,18 @@ const fixtureIncident = {
   nearby_cameras: [{site_id:'kowen', distance_km:12.4}, {site_id:'stromlo', distance_km:24.1}],
 };
 const fixtureCard = document.createElement('australian-fire-watch-card');
-fixtureCard.setConfig({type:'custom:australian-fire-watch-card', entity:'sensor.fire_watch_demo', show_map:false});
+const fixtureParams = new URLSearchParams(location.search);
+fixtureCard.setConfig({type:'custom:australian-fire-watch-card', entity:'sensor.fire_watch_demo', show_map:false, compact:fixtureParams.has('compact')});
 document.body.append(fixtureCard);
 fixtureCard.hass = {connected:true, states:{'sensor.fire_watch_demo':{
   entity_id:'sensor.fire_watch_demo', state:'advice', last_updated:new Date().toISOString(),
   attributes:{integration:'australian_fire_watch', entry_id:'demo', location_name:'Canberra demo',
     incidents:[fixtureIncident], highest_priority_incident:fixtureIncident, incident_count:1,
     official_warning_level:'Advice',
+    danger:{today:{rating:'Moderate',fbi:8,total_fire_ban:false},tomorrow:{rating:'Moderate',fbi:9,total_fire_ban:false}},
     camera_network:{enabled:true, sites:{kowen:{name:'Kowen Forest',region:'ACT',views:['Guard','Sentry']},
       stromlo:{name:'Stromlo',region:'ACT',views:['Sentry']}},
-      nearby_sites:[{site_id:'kowen',distance_km:8.2},{site_id:'stromlo',distance_km:15.6}]},
+      nearby_sites:[{site_id:'kowen',distance_km:8.2},{site_id:'stromlo',distance_km:15.6}].slice(0,fixtureParams.has('single') ? 1 : 2)},
     feed:{status:'ok', assessment_complete:true, last_successful_update:new Date().toISOString(),
       source_name:'Official feed (demo)', official_url:'https://www.rfs.nsw.gov.au/'},
   }

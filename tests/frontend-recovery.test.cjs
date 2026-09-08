@@ -37,7 +37,7 @@ function environment() {
   });
   function load() {
     vm.runInContext(`(() => { ${source}\nglobalThis.recover = recoverFailedFireWatchCards;
-      globalThis.cameraHelpers = { resolveCameraSites, normalizeIncident, renderIncidentCameras, renderCameraNetwork }; })()`, context);
+      globalThis.cameraHelpers = { resolveCameraSites, normalizeIncident, renderIncidentCameras, renderCameraNetwork, renderCompactBomAttribution }; })()`, context);
   }
   load();
   return { context, document, intervals, listeners, load,
@@ -67,6 +67,7 @@ test('camera viewers preserve provider encoding and escape display names', () =>
   assert.ok(html.includes('central-watch-view.png'));
   assert.ok(!html.includes('View Sentry'));
   assert.ok(html.includes('reported fire location'));
+  assert.ok(!html.includes('<details'), 'Incident cameras must be immediately visible');
   const hostile = helpers.normalizeIncident({nearby_cameras: [{site_id: 'x', distance_km: 2}]}, 0,
     {x: {name: '<img src=x onerror=alert(1)>', views: ['Guard']}});
   assert.ok(!helpers.renderIncidentCameras(hostile).includes('<img src=x'));
@@ -78,6 +79,14 @@ test('camera section handles disabled, empty and old summaries', () => {
   assert.equal(helpers.renderIncidentCameras(helpers.normalizeIncident({})), '');
   assert.equal(helpers.resolveCameraSites([{site_id: 'missing', distance_km: 5}], {}).length, 0);
   assert.ok(helpers.renderCameraNetwork({cameraNetwork: {nearbySites: []}}).includes('No listed camera sites'));
+  const sites = helpers.resolveCameraSites([{site_id:'one',distance_km:5}], {one:{name:'Fixture',region:'NSW',views:['Guard']}});
+  const html = helpers.renderCameraNetwork({cameraNetwork:{nearbySites:sites}});
+  assert.ok(!html.includes('<details'), 'Watchtowers must not be hidden behind a dropdown');
+  assert.ok(html.includes('1 site</span>'));
+  assert.ok(html.includes('camera-view-button'));
+  const credit = helpers.renderCompactBomAttribution();
+  assert.ok(credit.includes('Weather data: Bureau of Meteorology'));
+  assert.ok(!credit.includes('<img'), 'Mobile attribution should be readable text');
 });
 
 function missingCard({ message = "Custom element doesn't exist: australian-fire-watch-card.", ready = true } = {}) {

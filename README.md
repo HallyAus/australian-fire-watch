@@ -192,13 +192,16 @@ Australian Fire Watch includes links to **25 public Central Watch camera views
 at 16 sites in NSW and ACT**, using locations supplied by Watchtowers Networks.
 No account or API key is required by this integration.
 
-- Expand **Camera nearby** on an incident or priority card to see up to three
+- **Nearby fire cameras** on an incident or priority card immediately shows up to three
   nearest sites within 30 km of the reported fire location. Each site groups its
   Guard and Sentry views into one branded **VIEW** image button. It opens Guard
   where present, otherwise Sentry, in the provider's viewer.
-- Expand **Nearby cameras** in the dashboard to browse sites within your
+- **Watchtowers cameras** is always visible in the dashboard, showing sites within your
   dashboard monitoring radius, even when there are no reported incidents. These
   distances are from the monitored location, not from a fire.
+- Camera names and the branded **VIEW** buttons are shown without a dropdown.
+  The compact card includes a readable Bureau of Meteorology source link in its
+  footer instead of the tiny blue attribution image.
 - Notifications with a current nearby camera offer **Open official map**,
   **View camera**, and **Acknowledge**. The nearest site's first available view
   (Guard when present) is used. Snooze remains in the dashboard. Notifications
