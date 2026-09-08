@@ -165,6 +165,29 @@ The bundled dashboard strategy is also available:
 
 ## Central Watch cameras
 
+### With thanks to Watchtowers Networks
+
+<a href="https://centralwatch.watchtowers.io/au">
+  <img src="custom_components/australian_fire_watch/frontend/watchtowers-networks.jpg" alt="Watchtowers Networks" width="420">
+</a>
+
+**A big thank you to the team at Watchtowers Networks**, who operate a fire camera
+network across NSW and the ACT. Their public platform,
+[Central Watch](https://centralwatch.watchtowers.io/au), brings camera streams and
+incident information together, giving people another way to see what is happening
+in their region. Building and maintaining this network, and making those views
+available to the public, is a valuable contribution to bushfire awareness.
+
+The team reached out to Australian Fire Watch and generously shared their camera
+locations, direct viewer links and logos. That practical support made this feature
+possible: people using Home Assistant can now go from a reported fire to a nearby
+camera view with a single **VIEW** button. We're grateful for their work and their
+willingness to help make useful information easier for the community to access.
+
+**[Explore Central Watch and the team's camera network →](https://centralwatch.watchtowers.io/au)**
+
+### Using the camera links
+
 Australian Fire Watch includes links to **25 public Central Watch camera views
 at 16 sites in NSW and ACT**, using locations supplied by Watchtowers Networks.
 No account or API key is required by this integration.
