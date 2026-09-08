@@ -23,6 +23,14 @@ never describe missing or stale data as safe.
 - Notifications must be deduplicated by stable incident ID and lifecycle change; escalation always overrides snooze.
 - Never commit Home Assistant `.storage`, coordinates, tokens, service names, or other household data.
 
+## Release completion
+
+When the owner requests a version bump or release, update both manifest.json
+and const.py, validate the change, push main, publish the matching GitHub Release
+and tag, and verify the release workflow and australian_fire_watch.zip asset.
+A source version bump alone is not a completed HACS release. Do not overwrite
+existing published release assets or move an existing tag.
+
 ## Validation
 
 Run `python -m unittest discover -s tests -v`, compile Python, validate JSON/YAML, and run `ruff`/`mypy` when available. Production installation requires a Home Assistant configuration check before restart.

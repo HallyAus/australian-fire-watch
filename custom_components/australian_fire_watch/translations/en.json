@@ -19,7 +19,9 @@
           "advice_radius_km": "Advice alert radius",
           "unclassified_fire_radius_km": "Unclassified active-fire alert radius",
           "stale_after_minutes": "Mark incident feed stale after",
-          "enable_bom_enrichment": "Enable NSW BOM FBI and land-warning enrichment"
+          "enable_bom_enrichment": "Enable NSW BOM FBI and land-warning enrichment",
+          "enable_central_watch": "Show Central Watch camera links (NSW/ACT locations)",
+          "camera_radius_km": "Camera distance from reported fire location (maximum 30 km)"
         }
       }
     },
@@ -49,7 +51,9 @@
           "advice_radius_km": "Advice alert radius",
           "unclassified_fire_radius_km": "Unclassified active-fire alert radius",
           "stale_after_minutes": "Mark incident feed stale after",
-          "enable_bom_enrichment": "Enable NSW BOM FBI and land-warning enrichment"
+          "enable_bom_enrichment": "Enable NSW BOM FBI and land-warning enrichment",
+          "enable_central_watch": "Show Central Watch camera links (NSW/ACT locations)",
+          "camera_radius_km": "Camera distance from reported fire location (maximum 30 km)"
         }
       }
     },

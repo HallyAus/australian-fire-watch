@@ -25,6 +25,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType
 
+from .cameras import CONF_CAMERA_RADIUS, CONF_ENABLE_CAMERAS, DEFAULT_CAMERA_RADIUS_KM
 from .const import (
     CONF_ADVICE_RADIUS,
     CONF_DISTRICT,
@@ -138,6 +139,10 @@ YAML_ENTRY_SCHEMA = vol.Schema(
             vol.Coerce(int), vol.Range(min=15, max=180)
         ),
         vol.Optional(CONF_ENABLE_BOM, default=DEFAULT_ENABLE_BOM): cv.boolean,
+        vol.Optional(CONF_ENABLE_CAMERAS, default=True): cv.boolean,
+        vol.Optional(CONF_CAMERA_RADIUS, default=DEFAULT_CAMERA_RADIUS_KM): vol.All(
+            vol.Coerce(float), vol.Range(min=1, max=30)
+        ),
     },
     extra=vol.PREVENT_EXTRA,
 )

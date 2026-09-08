@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Central Watch camera preview — synthetic data</title>
+<style>body { margin:0; font-family:Arial,sans-serif; background:#f3f6f9; } .demo { padding:12px; text-align:center; background:#e2e8f0; } </style>
+<div class="demo">Design preview · Synthetic incidents · No live alerts</div>
+<script src="../custom_components/australian_fire_watch/frontend/australian-fire-watch-panel.js"></script>
+<script>
+const fixtureIncident = {
+  id: 'demo', title: 'Demonstration forest incident', type: 'Bush Fire',
+  warning_level: 'Advice', control_status: 'Being controlled', distance_km: 14,
+  updated_at: new Date().toISOString(), official_url: 'https://www.rfs.nsw.gov.au/',
+  nearby_cameras: [{site_id:'kowen', distance_km:12.4}, {site_id:'stromlo', distance_km:24.1}],
+};
+const fixtureCard = document.createElement('australian-fire-watch-card');
+fixtureCard.setConfig({type:'custom:australian-fire-watch-card', entity:'sensor.fire_watch_demo', show_map:false});
+document.body.append(fixtureCard);
+fixtureCard.hass = {connected:true, states:{'sensor.fire_watch_demo':{
+  entity_id:'sensor.fire_watch_demo', state:'advice', last_updated:new Date().toISOString(),
+  attributes:{integration:'australian_fire_watch', entry_id:'demo', location_name:'Canberra demo',
+    incidents:[fixtureIncident], highest_priority_incident:fixtureIncident, incident_count:1,
+    official_warning_level:'Advice',
+    camera_network:{enabled:true, sites:{kowen:{name:'Kowen Forest',region:'ACT',views:['Guard','Sentry']},
+      stromlo:{name:'Stromlo',region:'ACT',views:['Sentry']}},
+      nearby_sites:[{site_id:'kowen',distance_km:8.2},{site_id:'stromlo',distance_km:15.6}]},
+    feed:{status:'ok', assessment_complete:true, last_successful_update:new Date().toISOString(),
+      source_name:'Official feed (demo)', official_url:'https://www.rfs.nsw.gov.au/'},
+  }
+}}};
+// The preview server does not expose Home Assistant's static asset route.
+fixtureCard.shadowRoot.querySelectorAll('.camera-brand').forEach((image) => {
+  image.src = '../custom_components/australian_fire_watch/frontend/' + image.src.split('/').pop();
+});
+</script>
+</html>

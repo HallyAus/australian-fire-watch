@@ -10,6 +10,7 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
+from .cameras import CONF_CAMERA_RADIUS, CONF_ENABLE_CAMERAS, DEFAULT_CAMERA_RADIUS_KM
 from .const import (
     CONF_ADVICE_RADIUS,
     CONF_DISTRICT,
@@ -137,6 +138,13 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
                 mode=selector.NumberSelectorMode.BOX,
             )
         ),
+        vol.Required(
+            CONF_ENABLE_CAMERAS, default=defaults.get(CONF_ENABLE_CAMERAS, True)
+        ): selector.BooleanSelector(),
+        vol.Required(
+            CONF_CAMERA_RADIUS,
+            default=defaults.get(CONF_CAMERA_RADIUS, DEFAULT_CAMERA_RADIUS_KM),
+        ): _radius_selector(30),
         vol.Required(
             CONF_ENABLE_BOM,
             default=defaults.get(CONF_ENABLE_BOM, DEFAULT_ENABLE_BOM),

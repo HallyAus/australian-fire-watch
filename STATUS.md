@@ -1,5 +1,17 @@
 # Australian Fire Watch status
 
+## 1.3.0 Central Watch camera links
+
+- Link current incidents to up to three nearby camera sites using the supplied
+  25 views at 16 NSW/ACT locations, grouped by site and matched across borders.
+- Add a configurable 1–30 km camera radius (default 30) and an option to disable
+  camera links. The nearby-sites browser uses the dashboard monitoring radius.
+- Include camera links in full/compact dashboards and current incident
+  notifications, retaining official-source access and notification urgency.
+- Bundle the supplied Central Watch logo and attribute Watchtowers Networks.
+- Camera distance is supplementary context, not a visibility or online-status
+  assessment. No incident API, stream embedding, scraping or camera polling.
+
 ## 1.2.1 original-card startup and recovery
 
 - Register the bundled frontend during integration setup, before any external

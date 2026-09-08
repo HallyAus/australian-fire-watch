@@ -163,6 +163,44 @@ The bundled dashboard strategy is also available:
     strategy:
       type: custom:australian-fire-watch
 
+## Central Watch cameras
+
+Australian Fire Watch includes links to **25 public Central Watch camera views
+at 16 sites in NSW and ACT**, using locations supplied by Watchtowers Networks.
+No account or API key is required by this integration.
+
+- Expand **Camera nearby** on an incident or priority card to see up to three
+  nearest sites within 30 km of the reported fire location. Each site groups its
+  Guard and Sentry views, with buttons opening the provider's viewer.
+- Expand **Nearby cameras** in the dashboard to browse sites within your
+  dashboard monitoring radius, even when there are no reported incidents. These
+  distances are from the monitored location, not from a fire.
+- Notifications with a current nearby camera offer **Open official map**,
+  **View camera**, and **Acknowledge**. The nearest site's first available view
+  (Guard when present) is used. Snooze remains in the dashboard. Notifications
+  without a camera match retain their existing buttons.
+- In integration options, turn **Show Central Watch camera links** off or adjust
+  **Camera distance from reported fire location** from 1 to 30 km (default 30).
+  Camera links are enabled by default. YAML settings are `enable_central_watch`
+  and `camera_radius_km`.
+
+Camera matching crosses state borders and does not change official warnings,
+alert radii, notification urgency or deduplication. Missing fire coordinates
+produce no camera match. Distance is to the reported incident point, which may
+represent a warning area rather than the exact fire position. Proximity does
+not confirm visibility, camera direction or online status.
+
+The catalogue was supplied in September 2026 and is bundled with the integration;
+updates to locations require an integration update. There is no public incident
+API involved and no video embedding, snapshot capture or background polling of
+Central Watch. Opening a camera link visits the external provider's site, which
+controls access to its viewer.
+
+Camera links and the unmodified Central Watch and Watchtowers Networks logos are provided by
+[Watchtowers Networks / Central Watch](https://centralwatch.watchtowers.io/au).
+The provider's branding remains its property. Other states keep the same fire
+monitoring features and can gain camera links as additional locations are supplied.
+
 ## Jurisdictions and official data
 
 Australian emergency data is published separately by each jurisdiction, so

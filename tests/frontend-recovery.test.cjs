@@ -36,7 +36,8 @@ function environment() {
     customElements: { get: name => registered.get(name), define: (name, value) => registered.set(name, value) },
   });
   function load() {
-    vm.runInContext(`(() => { ${source}\nglobalThis.recover = recoverFailedFireWatchCards; })()`, context);
+    vm.runInContext(`(() => { ${source}\nglobalThis.recover = recoverFailedFireWatchCards;
+      globalThis.cameraHelpers = { resolveCameraSites, normalizeIncident, renderIncidentCameras, renderCameraNetwork }; })()`, context);
   }
   load();
   return { context, document, intervals, listeners, load,
@@ -53,6 +54,29 @@ function environment() {
     emitDocument(name) { for (const fn of documentListeners.get(name) || []) fn({}); },
   };
 }
+
+test('camera viewers preserve provider encoding and escape display names', () => {
+  const { cameraHelpers: helpers } = environment().context;
+  const catalogue = { kowen: { name: 'Kowen Forest', region: 'ACT', views: ['Guard', 'Sentry'] } };
+  const incident = helpers.normalizeIncident({ id: 'one', nearby_cameras: [{site_id: 'kowen', distance_km: 0}] }, 0, catalogue);
+  assert.equal(incident.cameras.length, 1);
+  assert.equal(incident.cameras[0].views[0].url, 'https://centralwatch.watchtowers.io/au?camera=Kowen%2520Forest%2520-%2520Guard');
+  const html = helpers.renderIncidentCameras(incident);
+  assert.ok(html.includes('View Guard'));
+  assert.ok(html.includes('View Sentry'));
+  assert.ok(html.includes('reported fire location'));
+  const hostile = helpers.normalizeIncident({nearby_cameras: [{site_id: 'x', distance_km: 2}]}, 0,
+    {x: {name: '<img src=x onerror=alert(1)>', views: ['Guard']}});
+  assert.ok(!helpers.renderIncidentCameras(hostile).includes('<img src=x'));
+});
+
+test('camera section handles disabled, empty and old summaries', () => {
+  const helpers = environment().context.cameraHelpers;
+  assert.equal(helpers.renderCameraNetwork({}), '');
+  assert.equal(helpers.renderIncidentCameras(helpers.normalizeIncident({})), '');
+  assert.equal(helpers.resolveCameraSites([{site_id: 'missing', distance_km: 5}], {}).length, 0);
+  assert.ok(helpers.renderCameraNetwork({cameraNetwork: {nearbySites: []}}).includes('No listed camera sites'));
+});
 
 function missingCard({ message = "Custom element doesn't exist: australian-fire-watch-card.", ready = true } = {}) {
   const wrapper = { localName: 'hui-card', isConnected: true,

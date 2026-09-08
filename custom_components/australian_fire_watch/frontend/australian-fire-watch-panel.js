@@ -291,7 +291,23 @@ const mapMarkerColor = (incident) => {
   return "#64748b";
 };
 
-const normalizeIncident = (raw, index = 0) => {
+const CENTRAL_WATCH_URL = "https://centralwatch.watchtowers.io/au";
+const resolveCameraSites = (matches, catalogue = {}) => asArray(matches).flatMap((match) => {
+  const site = catalogue[match?.site_id];
+  const distanceKm = asNumber(match?.distance_km);
+  if (!site || !site.name || distanceKm === null || distanceKm < 0) return [];
+  const views = asArray(site.views).filter((view) => ["Guard", "Sentry"].includes(view));
+  if (!views.length) return [];
+  return [{
+    name: site.name, region: site.region, distanceKm,
+    views: views.map((view) => ({
+      name: view,
+      url: `${CENTRAL_WATCH_URL}?camera=${encodeURIComponent(encodeURIComponent(`${site.name} - ${view}`))}`,
+    })),
+  }];
+});
+
+const normalizeIncident = (raw, index = 0, cameraCatalogue = {}) => {
   const incident = raw && typeof raw === "object" ? raw : {};
   const id = String(
     firstPresent(
@@ -340,6 +356,7 @@ const normalizeIncident = (raw, index = 0) => {
     acknowledged: asBoolean(incident.acknowledged) === true,
     snoozedUntil: firstPresent(incident.snoozed_until, incident.snooze_until),
     raw: incident,
+    cameras: resolveCameraSites(incident.nearby_cameras, cameraCatalogue),
   };
 };
 
@@ -612,13 +629,15 @@ const normalizeModel = (hass, config = {}) => {
       ...(item && typeof item === "object" ? item : {}),
       is_planned: true,
     })),
-  ].map(normalizeIncident);
+  ].map((item, index) => normalizeIncident(item, index,
+    attributes.camera_network?.enabled === true ? attributes.camera_network.sites : {}));
 
   const deduplicated = [...new Map(allIncidents.map((item) => [item.id, item])).values()];
   const incidents = sortIncidents(deduplicated.filter((item) => !item.isPlanned));
   const plannedBurns = sortIncidents(deduplicated.filter((item) => item.isPlanned));
   const explicitPriority = attributes.highest_priority_incident
-    ? normalizeIncident(attributes.highest_priority_incident)
+    ? normalizeIncident(attributes.highest_priority_incident, 0,
+        attributes.camera_network?.enabled === true ? attributes.camera_network.sites : {})
     : null;
   const priorityIncident = explicitPriority || sortIncidentsByPriority(incidents)[0] || null;
 
@@ -688,6 +707,9 @@ const normalizeModel = (hass, config = {}) => {
     summary,
     entityId: entityIdForState(hass, summary),
     entryId: firstPresent(attributes.entry_id, attributes.config_entry_id),
+    cameraNetwork: attributes.camera_network?.enabled === true ? {
+      nearbySites: resolveCameraSites(attributes.camera_network.nearby_sites, attributes.camera_network.sites),
+    } : null,
     locationName: firstPresent(
       attributes.location_name,
       attributes.zone_name,
@@ -1279,6 +1301,16 @@ const STYLES = `
   .incident-scanline .icon { width: 14px; height: 14px; }
   .incident-detail-drawer { margin-top: 7px; padding-top: 0; border-top: 0; }
   .incident-detail-drawer summary { min-height: 44px; color: var(--fw-link); font-size: .82rem; }
+  .camera-site { display: grid; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--fw-border); }
+  .camera-site small { font-weight: 400; }
+  .camera-site > span, .camera-note { font-size: .8rem; }
+  .camera-matches { margin-top: 10px; }
+  .camera-matches summary { font-size: .82rem; overflow-wrap: anywhere; }
+  .camera-brand { display: block; width: 280px; max-width: 100%; height: auto; background: #fff; padding: 8px; border-radius: 6px; }
+  .camera-provider-link { display: inline-grid; gap: 8px; max-width: 100%; margin: 8px 0; font-size: .85rem; font-weight: 700; }
+  .camera-provider-link > span { display: flex; align-items: center; gap: 6px; min-height: 32px; }
+  .camera-network-brand { width: 220px; margin-top: 12px; }
+  .camera-network { padding: 0 12px 12px; }
   .incident-detail-drawer .incident-actions { margin-top: 7px; }
 
   .empty-state { padding: 18px; border: 1px dashed var(--fw-border); border-radius: 13px; color: var(--fw-muted); text-align: center; }
@@ -1664,6 +1696,46 @@ const renderIncidentMeta = (incident) => {
   `;
 };
 
+const renderCameraSites = (sites, reference) => asArray(sites).map((site) => `
+  <div class="camera-site">
+    <strong>${escapeHtml(site.name)} <small>${escapeHtml(site.region)}</small></strong>
+    <span>${escapeHtml(site.distanceKm.toFixed(1))} km from ${escapeHtml(reference)}</span>
+    <div class="incident-actions">${site.views.map((view) => `
+      <a class="button-link" href="${escapeHtml(view.url)}" target="_blank" rel="noopener noreferrer"
+        aria-label="View ${escapeHtml(site.name)} ${escapeHtml(view.name)} on Central Watch">View ${escapeHtml(view.name)} ${icon("external")}</a>
+    `).join("")}</div>
+  </div>
+`).join("");
+
+const renderCentralWatchLink = () => `
+  <a class="camera-provider-link" href="${CENTRAL_WATCH_URL}" target="_blank" rel="noopener noreferrer">
+    <img class="camera-brand" src="/api/australian_fire_watch/frontend/central-watch.jpg" alt="Watchtowers Central Watch" loading="lazy" width="1280" height="237">
+    <span>View on Central Watch ${icon("external")}</span>
+  </a>
+`;
+
+const renderIncidentCameras = (incident) => !incident.cameras?.length ? "" : `
+  <details class="camera-matches">
+    <summary>Camera nearby · ${escapeHtml(incident.cameras[0].name)} · ${escapeHtml(incident.cameras[0].distanceKm.toFixed(1))} km from fire</summary>
+    ${renderCentralWatchLink()}
+    ${renderCameraSites(incident.cameras, "reported fire location")}
+    <p class="camera-note">Central Watch · Proximity only. Visibility and camera direction may vary.</p>
+  </details>
+`;
+
+const renderCameraNetwork = (model) => !model.cameraNetwork ? "" : `
+  <details class="info-drawer camera-network">
+    <summary>Nearby cameras <span>${model.cameraNetwork.nearbySites.length} sites</span></summary>
+    ${renderCentralWatchLink()}
+    <p>Camera links provided by Watchtowers Networks. Browse sites within your dashboard monitoring radius.</p>
+    ${model.cameraNetwork.nearbySites.length
+      ? renderCameraSites(model.cameraNetwork.nearbySites, "monitored location")
+      : '<p>No listed camera sites within this monitoring radius. The supplied network currently covers parts of NSW and ACT.</p>'}
+    <p class="camera-note">Locations supplied September 2026. Proximity does not confirm visibility, camera direction or online status.</p>
+    <img class="camera-brand camera-network-brand" src="/api/australian_fire_watch/frontend/watchtowers-networks.jpg" alt="Watchtowers Networks" loading="lazy" width="1280" height="238">
+  </details>
+`;
+
 const renderIncidentActions = (incident) => {
   const moreInfo = incident.entityId
     ? `<button class="button" type="button" data-action="more-info" data-entity-id="${escapeHtml(
@@ -1703,6 +1775,7 @@ const renderIncident = (incident, priority = false) => {
           ${renderIncidentMeta(incident)}
           ${renderIncidentActions(incident)}
         </details>
+        ${renderIncidentCameras(incident)}
       </article>
     `;
   }
@@ -1716,6 +1789,7 @@ const renderIncident = (incident, priority = false) => {
       ${renderIncidentMeta(incident)}
       <div class="incident-meta">${updated}</div>
       ${renderIncidentActions(incident)}
+      ${renderIncidentCameras(incident)}
     </article>
   `;
 };
@@ -1919,6 +1993,7 @@ const renderCommandBrief = (model, busy) => {
         <div class="brief-priority-meta">
           <span>${escapeHtml(updated)}</span>
         </div>
+        ${renderIncidentCameras(incident)}
       </article>
     `;
   } else {
@@ -2040,6 +2115,7 @@ const renderCompact = (model, title, showMap = false) => {
           <span>${escapeHtml(formatDistance(incident.distanceKm))}</span>
           <span>${escapeHtml(updated)}</span>
         </div>
+        ${renderIncidentCameras(incident)}
       </section>
     `;
   } else {
@@ -2106,6 +2182,7 @@ const renderCompact = (model, title, showMap = false) => {
 
         ${priority}
         ${showMap ? renderCompactMap() : ""}
+        ${renderCameraNetwork(model)}
         ${
           feedMessage
             ? `<p class="compact-feed-message">${escapeHtml(feedMessage)}</p>`
@@ -2609,6 +2686,7 @@ class AustralianFireWatchBase extends HTMLElement {
           ${renderDangerDetails(model)}
           ${showReadiness ? renderReadiness(model) : ""}
           ${renderPlannedBurns(model)}
+          ${renderCameraNetwork(model)}
           ${renderHealth(model, this._busy)}
         </section>
       </main>

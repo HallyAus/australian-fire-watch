@@ -20,6 +20,14 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import FeedSnapshot, OfficialFeedClient
+from .cameras import (
+    CONF_CAMERA_RADIUS,
+    CONF_ENABLE_CAMERAS,
+    DEFAULT_CAMERA_RADIUS_KM,
+    camera_catalogue,
+    camera_url,
+    nearby_camera_sites,
+)
 from .const import (
     BOM_FIRE_DANGER_URL,
     BOM_WARNINGS_URL,
@@ -789,6 +797,23 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "danger": self._danger,
             "incidents": incident_dicts,
             "planned_burns": planned_dicts,
+            "camera_network": {
+                "enabled": bool(self.config.get(CONF_ENABLE_CAMERAS, True)),
+                "radius_km": self.config.get(
+                    CONF_CAMERA_RADIUS, DEFAULT_CAMERA_RADIUS_KM
+                ),
+                "sites": camera_catalogue(),
+                "nearby_sites": nearby_camera_sites(
+                    monitored_latitude,
+                    monitored_longitude,
+                    float(
+                        self.config.get(CONF_MONITOR_RADIUS, DEFAULT_MONITOR_RADIUS_KM)
+                    ),
+                    limit=16,
+                ),
+            }
+            if self.config.get(CONF_ENABLE_CAMERAS, True)
+            else {"enabled": False},
             "incident_count": len(self._incidents),
             "planned_burn_count": len(self._planned),
             "highest_priority_incident": self._incident_dict(highest)
@@ -827,10 +852,22 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _incident_dict(self, incident: Incident | None) -> dict[str, Any] | None:
         if incident is None:
             return None
-        return incident.as_dict(
+        result = incident.as_dict(
             entity_id=incident_entity_id(self.entry.entry_id, incident.id),
             acknowledged=incident.id in self._acknowledged,
             snoozed_until=self._snoozed.get(incident.id),
+        )
+        if self.config.get(CONF_ENABLE_CAMERAS, True):
+            result["nearby_cameras"] = self._incident_cameras(incident)
+        return result
+
+    def _incident_cameras(self, incident: Incident) -> list[dict[str, Any]]:
+        if not self.config.get(CONF_ENABLE_CAMERAS, True):
+            return []
+        return nearby_camera_sites(
+            incident.latitude,
+            incident.longitude,
+            float(self.config.get(CONF_CAMERA_RADIUS, DEFAULT_CAMERA_RADIUS_KM)),
         )
 
     def _summary_status(self, qualifying: list[Incident]) -> str:
@@ -1211,6 +1248,35 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         "title": f"Snooze {minutes} min",
                     },
                 )
+        matches = self._incident_cameras(incident) if incident is not None else []
+        if matches and event.lifecycle != "left_radius":
+            nearest = matches[0]
+            site = camera_catalogue()[nearest["site_id"]]
+            message += (
+                f" Camera nearby: {site['name']}, {nearest['distance_km']:.1f} km "
+                "from reported fire location. Visibility and direction may vary."
+            )
+            # Android displays at most three actions. Keep official access and
+            # acknowledgement; the dashboard still offers snooze controls.
+            actions = [item for item in actions if "SNOOZE|" not in item["action"]]
+            actions.insert(
+                0,
+                actions.pop(
+                    next(
+                        index
+                        for index, item in enumerate(actions)
+                        if item.get("uri") == official_url
+                    )
+                ),
+            )
+            actions.insert(
+                1,
+                {
+                    "action": "URI",
+                    "title": "View camera",
+                    "uri": camera_url(nearest["site_id"]),
+                },
+            )
         data: dict[str, Any] = {
             "tag": f"australian-fire-watch-{self.entry.entry_id}-{event.incident_id}",
             "group": f"australian-fire-watch-{self.entry.entry_id}",
