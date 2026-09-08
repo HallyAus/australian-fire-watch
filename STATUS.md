@@ -8,7 +8,10 @@
   camera links. The nearby-sites browser uses the dashboard monitoring radius.
 - Include camera links in full/compact dashboards and current incident
   notifications, retaining official-source access and notification urgency.
-- Bundle the supplied Central Watch logo and attribute Watchtowers Networks.
+- Adapt the supplied Central Watch logo into one branded VIEW button per site
+  and retain the Watchtowers Networks attribution logo.
+- Omit empty optional incident fields from the dashboard summary to keep camera
+  context within HA's history-storage budget; event payloads retain those fields.
 - Camera distance is supplementary context, not a visibility or online-status
   assessment. No incident API, stream embedding, scraping or camera polling.
 

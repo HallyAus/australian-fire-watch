@@ -171,7 +171,8 @@ No account or API key is required by this integration.
 
 - Expand **Camera nearby** on an incident or priority card to see up to three
   nearest sites within 30 km of the reported fire location. Each site groups its
-  Guard and Sentry views, with buttons opening the provider's viewer.
+  Guard and Sentry views into one branded **VIEW** image button. It opens Guard
+  where present, otherwise Sentry, in the provider's viewer.
 - Expand **Nearby cameras** in the dashboard to browse sites within your
   dashboard monitoring radius, even when there are no reported incidents. These
   distances are from the monitored location, not from a fire.
@@ -196,9 +197,11 @@ API involved and no video embedding, snapshot capture or background polling of
 Central Watch. Opening a camera link visits the external provider's site, which
 controls access to its viewer.
 
-Camera links and the unmodified Central Watch and Watchtowers Networks logos are provided by
+Camera links and original Central Watch and Watchtowers Networks logos are provided by
 [Watchtowers Networks / Central Watch](https://centralwatch.watchtowers.io/au).
-The provider's branding remains its property. Other states keep the same fire
+The Central Watch artwork is adapted into a single **VIEW** image button;
+the Watchtowers Networks attribution logo is unchanged. The provider's branding
+remains its property. Other states keep the same fire
 monitoring features and can gain camera links as additional locations are supplied.
 
 ## Jurisdictions and official data

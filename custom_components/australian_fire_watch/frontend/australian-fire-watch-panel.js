@@ -1307,8 +1307,9 @@ const STYLES = `
   .camera-matches { margin-top: 10px; }
   .camera-matches summary { font-size: .82rem; overflow-wrap: anywhere; }
   .camera-brand { display: block; width: 280px; max-width: 100%; height: auto; background: #fff; padding: 8px; border-radius: 6px; }
-  .camera-provider-link { display: inline-grid; gap: 8px; max-width: 100%; margin: 8px 0; font-size: .85rem; font-weight: 700; }
-  .camera-provider-link > span { display: flex; align-items: center; gap: 6px; min-height: 32px; }
+  .camera-view-button { display: block; width: 280px; max-width: 100%; min-height: 44px; overflow: hidden; border-radius: 8px; }
+  .camera-view-button:hover { filter: brightness(.94); }
+  .camera-view-art { display: block; width: 100%; aspect-ratio: 5.2; min-height: 44px; object-fit: cover; object-position: center; }
   .camera-network-brand { width: 220px; margin-top: 12px; }
   .camera-network { padding: 0 12px 12px; }
   .incident-detail-drawer .incident-actions { margin-top: 7px; }
@@ -1696,28 +1697,23 @@ const renderIncidentMeta = (incident) => {
   `;
 };
 
+const renderCameraButton = (url, label) => `
+  <a class="camera-view-button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">
+    <img class="camera-view-art" src="/api/australian_fire_watch/frontend/central-watch-view.png" alt="Watchtowers Central Watch — View" loading="lazy">
+  </a>
+`;
+
 const renderCameraSites = (sites, reference) => asArray(sites).map((site) => `
   <div class="camera-site">
     <strong>${escapeHtml(site.name)} <small>${escapeHtml(site.region)}</small></strong>
     <span>${escapeHtml(site.distanceKm.toFixed(1))} km from ${escapeHtml(reference)}</span>
-    <div class="incident-actions">${site.views.map((view) => `
-      <a class="button-link" href="${escapeHtml(view.url)}" target="_blank" rel="noopener noreferrer"
-        aria-label="View ${escapeHtml(site.name)} ${escapeHtml(view.name)} on Central Watch">View ${escapeHtml(view.name)} ${icon("external")}</a>
-    `).join("")}</div>
+    ${renderCameraButton(site.views[0].url, `View ${site.name} ${site.views[0].name} on Central Watch`)}
   </div>
 `).join("");
-
-const renderCentralWatchLink = () => `
-  <a class="camera-provider-link" href="${CENTRAL_WATCH_URL}" target="_blank" rel="noopener noreferrer">
-    <img class="camera-brand" src="/api/australian_fire_watch/frontend/central-watch.jpg" alt="Watchtowers Central Watch" loading="lazy" width="1280" height="237">
-    <span>View on Central Watch ${icon("external")}</span>
-  </a>
-`;
 
 const renderIncidentCameras = (incident) => !incident.cameras?.length ? "" : `
   <details class="camera-matches">
     <summary>Camera nearby · ${escapeHtml(incident.cameras[0].name)} · ${escapeHtml(incident.cameras[0].distanceKm.toFixed(1))} km from fire</summary>
-    ${renderCentralWatchLink()}
     ${renderCameraSites(incident.cameras, "reported fire location")}
     <p class="camera-note">Central Watch · Proximity only. Visibility and camera direction may vary.</p>
   </details>
@@ -1726,13 +1722,12 @@ const renderIncidentCameras = (incident) => !incident.cameras?.length ? "" : `
 const renderCameraNetwork = (model) => !model.cameraNetwork ? "" : `
   <details class="info-drawer camera-network">
     <summary>Nearby cameras <span>${model.cameraNetwork.nearbySites.length} sites</span></summary>
-    ${renderCentralWatchLink()}
     <p>Camera links provided by Watchtowers Networks. Browse sites within your dashboard monitoring radius.</p>
     ${model.cameraNetwork.nearbySites.length
       ? renderCameraSites(model.cameraNetwork.nearbySites, "monitored location")
-      : '<p>No listed camera sites within this monitoring radius. The supplied network currently covers parts of NSW and ACT.</p>'}
+      : `<p>No listed camera sites within this monitoring radius. The supplied network currently covers parts of NSW and ACT.</p>${renderCameraButton(CENTRAL_WATCH_URL, "View Central Watch camera network")}`}
     <p class="camera-note">Locations supplied September 2026. Proximity does not confirm visibility, camera direction or online status.</p>
-    <img class="camera-brand camera-network-brand" src="/api/australian_fire_watch/frontend/watchtowers-networks.jpg" alt="Watchtowers Networks" loading="lazy" width="1280" height="238">
+    <img class="camera-brand camera-network-brand" src="/api/australian_fire_watch/frontend/watchtowers-networks.jpg" alt="Watchtowers Networks" loading="lazy" width="1280" height="246">
   </details>
 `;
 

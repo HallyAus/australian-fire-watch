@@ -758,11 +758,11 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         display_incidents = sort_incidents_by_distance(self._incidents)
         display_planned = sort_incidents_by_distance(self._planned)
         incident_dicts = [
-            self._incident_dict(incident)
+            self._incident_dict(incident, compact=True)
             for incident in display_incidents[:SUMMARY_INCIDENT_LIMIT]
         ]
         planned_dicts = [
-            self._incident_dict(incident)
+            self._incident_dict(incident, compact=True)
             for incident in display_planned[:SUMMARY_PLANNED_LIMIT]
         ]
         warning_level = (
@@ -816,7 +816,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else {"enabled": False},
             "incident_count": len(self._incidents),
             "planned_burn_count": len(self._planned),
-            "highest_priority_incident": self._incident_dict(highest)
+            "highest_priority_incident": self._incident_dict(highest, compact=True)
             if highest
             else None,
             "fire_weather_warnings": self._warnings,
@@ -849,7 +849,9 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "last_updated": now.isoformat(),
         }
 
-    def _incident_dict(self, incident: Incident | None) -> dict[str, Any] | None:
+    def _incident_dict(
+        self, incident: Incident | None, *, compact: bool = False
+    ) -> dict[str, Any] | None:
         if incident is None:
             return None
         result = incident.as_dict(
@@ -859,6 +861,15 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         if self.config.get(CONF_ENABLE_CAMERAS, True):
             result["nearby_cameras"] = self._incident_cameras(incident)
+        if compact:
+            # Recorder limits each entity's attributes to 16 KiB. Empty optional
+            # fields are equivalent to absent values in the bundled dashboard;
+            # retain explicit False/Unknown values and the full event contract.
+            return {
+                key: value
+                for key, value in result.items()
+                if value is not None and value != []
+            }
         return result
 
     def _incident_cameras(self, incident: Incident) -> list[dict[str, Any]]:

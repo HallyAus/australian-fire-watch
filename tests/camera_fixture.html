@@ -29,7 +29,7 @@ fixtureCard.hass = {connected:true, states:{'sensor.fire_watch_demo':{
   }
 }}};
 // The preview server does not expose Home Assistant's static asset route.
-fixtureCard.shadowRoot.querySelectorAll('.camera-brand').forEach((image) => {
+fixtureCard.shadowRoot.querySelectorAll('.camera-brand, .camera-view-art').forEach((image) => {
   image.src = '../custom_components/australian_fire_watch/frontend/' + image.src.split('/').pop();
 });
 </script>

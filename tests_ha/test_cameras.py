@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from custom_components.australian_fire_watch.const import DOMAIN
 from custom_components.australian_fire_watch.model import Incident, LifecycleEvent
 
 
@@ -16,6 +17,8 @@ async def test_camera_notification_preserves_official_action_and_priority(
     hass.config_entries.async_update_entry(
         entry, options={"notify_services": ["notify.fixture"]}
     )
+    await hass.async_block_till_done()
+    loaded = hass.data[DOMAIN]["entries"][entry.entry_id]
     incident = Incident(
         "camera-test",
         "Public camera fixture",
@@ -62,6 +65,8 @@ async def test_no_camera_button_without_current_match(
             "enable_central_watch": enabled,
         },
     )
+    await hass.async_block_till_done()
+    loaded = hass.data[DOMAIN]["entries"][entry.entry_id]
     incident = Incident("fixture", "Fixture", latitude=latitude, longitude=149.275159)
     if lifecycle == "resolved":
         incident = None
@@ -87,6 +92,8 @@ async def test_camera_dashboard_without_fires_and_option_disable(hass, entry, lo
     hass.config_entries.async_update_entry(
         entry, options={"enable_central_watch": False}
     )
+    await hass.async_block_till_done()
+    loaded = hass.data[DOMAIN]["entries"][entry.entry_id]
     assert loaded._compose_data()["camera_network"] == {"enabled": False}
     assert "nearby_cameras" not in loaded._incident_dict(Incident("fixture", "Fixture"))
 
@@ -115,6 +122,10 @@ async def test_camera_context_keeps_typical_full_summary_below_recorder_limit(
         data = loaded._compose_data()
     assert data["incidents"][0]["nearby_cameras"]
     assert len(json.dumps(data).encode()) < 16384
+    assert data["incidents"][0]["acknowledged"] is False
+    assert data["incidents"][0]["control_status"] == "Unknown"
+    assert "council" not in data["incidents"][0]
+    assert loaded._incident_dict(base)["council"] is None
 
 
 def test_camera_config_defaults_and_validated_radius():

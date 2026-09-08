@@ -62,8 +62,10 @@ test('camera viewers preserve provider encoding and escape display names', () =>
   assert.equal(incident.cameras.length, 1);
   assert.equal(incident.cameras[0].views[0].url, 'https://centralwatch.watchtowers.io/au?camera=Kowen%2520Forest%2520-%2520Guard');
   const html = helpers.renderIncidentCameras(incident);
-  assert.ok(html.includes('View Guard'));
-  assert.ok(html.includes('View Sentry'));
+  assert.equal((html.match(/class="camera-view-button"/g) || []).length, 1);
+  assert.ok(html.includes('View Kowen Forest Guard on Central Watch'));
+  assert.ok(html.includes('central-watch-view.png'));
+  assert.ok(!html.includes('View Sentry'));
   assert.ok(html.includes('reported fire location'));
   const hostile = helpers.normalizeIncident({nearby_cameras: [{site_id: 'x', distance_km: 2}]}, 0,
     {x: {name: '<img src=x onerror=alert(1)>', views: ['Guard']}});
