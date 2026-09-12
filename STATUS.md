@@ -1,5 +1,18 @@
 # Australian Fire Watch status
 
+## 1.3.2 Lovelace configuration-error recovery
+
+- Ask Home Assistant's connected `hui-card` wrapper to recreate a late-loading
+  Fire Watch card. HA may detach the red error element, which prevents a rebuild
+  event dispatched from that element from reaching Lovelace.
+- Keep a lightweight recovery check active for always-on displays where the
+  missing-element error can appear after the initial four-second startup window.
+- Continue targeting only the missing `australian-fire-watch-card` error; other
+  dashboard configuration errors are never rebuilt by this integration.
+- Local validation: 87 Python unit tests and 13 frontend recovery tests pass;
+  Python compilation, undefined-name lint, JavaScript syntax and packaging
+  JSON/YAML validation pass.
+
 ## 1.3.1 visible cameras and compact-card tidy-up
 
 - Show Watchtowers camera sites and branded VIEW buttons immediately in both

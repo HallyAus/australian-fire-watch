@@ -34,8 +34,9 @@ const FIRE_WATCH_RECOVERY_DELAYS = Object.freeze([
   2600,
   4000,
 ]);
+const FIRE_WATCH_RECOVERY_INTERVAL_MS = 15_000;
 const FIRE_WATCH_RECOVERY_FLAG = Symbol.for(
-  "australian-fire-watch-card.recovery-scheduled.v2",
+  "australian-fire-watch-card.recovery-scheduled.v3",
 );
 // A dispatched event is only a request, not proof HA rebuilt the card.
 const fireWatchRecoveryAttempts = new WeakMap();
@@ -3057,21 +3058,35 @@ const dispatchFireWatchRebuild = (element) => {
   }
 };
 
+const reloadFireWatchWrapper = (wrapper) => {
+  if (!wrapper || typeof wrapper.load !== "function") return false;
+  try {
+    // hui-card.load() recreates its current child from the saved config. This
+    // does not depend on a detached hui-error-card bubbling ll-rebuild.
+    wrapper.load();
+    return true;
+  } catch (error) {
+    console.warn("Australian Fire Watch could not reload a Lovelace card", error);
+    return false;
+  }
+};
+
 const recoverFailedFireWatchCards = (root = document) => {
   if (!customElements.get(FIRE_WATCH_CARD_TAG)) return 0;
   const elements = composedElements(root);
   let recovered = 0;
-  const requestRebuild = (element) => {
+  const requestRebuild = (element, rebuild = dispatchFireWatchRebuild) => {
     if (!element || element.isConnected === false) return false;
     const lastAttempt = fireWatchRecoveryAttempts.get(element);
     const now = Date.now();
     if (lastAttempt !== undefined && now - lastAttempt < 1000) return false;
     // Rate-limit a stuck wrapper, but allow retry if its listener was not ready.
     fireWatchRecoveryAttempts.set(element, now);
-    if (dispatchFireWatchRebuild(element)) return true;
+    if (rebuild(element)) return true;
     fireWatchRecoveryAttempts.delete(element);
     return false;
   };
+  const handledErrors = new Set();
   for (const wrapper of elements) {
     if (elementTagName(wrapper) !== "hui-card") continue;
     const config = wrapper.config || wrapper._config || {};
@@ -3083,12 +3098,22 @@ const recoverFailedFireWatchCards = (root = document) => {
     ) {
       continue;
     }
-    if (requestRebuild(errorElement)) {
+    // HA can detach hui-error-card before this bundle finishes loading. Ask
+    // the still-connected hui-card wrapper to recreate its configured child.
+    handledErrors.add(errorElement);
+    if (
+      requestRebuild(wrapper, () =>
+        reloadFireWatchWrapper(wrapper) ||
+        (errorElement.isConnected !== false &&
+          dispatchFireWatchRebuild(errorElement)),
+      )
+    ) {
       recovered += 1;
     }
   }
   for (const errorElement of elements) {
     if (
+      handledErrors.has(errorElement) ||
       !isMissingFireWatchElementError(errorElement) ||
       errorElement.isConnected === false
     ) {
@@ -3120,6 +3145,11 @@ const scheduleFireWatchCardRecovery = () => {
     window.addEventListener(event, schedule);
   }
   document.addEventListener("visibilitychange", schedule);
+  // An always-on display can create the Lovelace error card after the initial
+  // four-second recovery window and without a navigation/visibility event.
+  window.setInterval(() => {
+    if (document.visibilityState !== "hidden") recoverFailedFireWatchCards();
+  }, FIRE_WATCH_RECOVERY_INTERVAL_MS);
   schedule();
 };
 

@@ -52,6 +52,7 @@ function environment() {
     },
     emit(name, detail) { for (const fn of listeners.get(name) || []) fn({ detail }); },
     emitDocument(name) { for (const fn of documentListeners.get(name) || []) fn({}); },
+    runIntervals() { for (const interval of intervals) interval.fn(); },
   };
 }
 
@@ -90,17 +91,21 @@ test('camera section handles disabled, empty and old summaries', () => {
 });
 
 function missingCard({ message = "Custom element doesn't exist: australian-fire-watch-card.", ready = true } = {}) {
-  const wrapper = { localName: 'hui-card', isConnected: true,
-    config: { type: 'custom:australian-fire-watch-card' }, children: [] };
+  const wrapper = { localName: 'hui-card', isConnected: true, loadAttempts: 0, ready,
+    config: { type: 'custom:australian-fire-watch-card' }, children: [],
+    load() {
+      this.loadAttempts++;
+      if (this.ready) {
+        error.isConnected = false;
+        this._element = { localName: 'australian-fire-watch-card' };
+        this.children = [this._element];
+      }
+    },
+  };
   const error = { localName: 'hui-error-card', isConnected: true,
-    _config: { message }, attempts: 0, ready,
+    _config: { message }, attempts: 0,
     dispatchEvent(event) {
       assert.equal(event.type, 'll-rebuild'); this.attempts++;
-      if (this.ready) {
-        this.isConnected = false;
-        wrapper._element = { localName: 'australian-fire-watch-card' };
-        wrapper.children = [wrapper._element];
-      }
     },
   };
   wrapper._element = error; wrapper.children = [error];
@@ -110,8 +115,34 @@ function missingCard({ message = "Custom element doesn't exist: australian-fire-
 test('a rebuild request is not mistaken for a completed rebuild', () => {
   const env = environment(); const { wrapper, error } = missingCard({ ready: false });
   env.document.children = [wrapper]; env.context.recover();
+  assert.equal(wrapper.loadAttempts, 1);
+  assert.equal(error.attempts, 0);
+  wrapper.ready = true; env.tick(1500); env.context.recover();
+  assert.equal(wrapper.loadAttempts, 2);
+  assert.equal(wrapper._element.localName, 'australian-fire-watch-card');
+});
+
+test('rebuilds from the connected wrapper when the error element is detached', () => {
+  const env = environment(); const { wrapper, error } = missingCard();
+  error.isConnected = false;
+  wrapper.children = [];
+  env.document.children = [wrapper]; env.context.recover();
+  assert.equal(wrapper.loadAttempts, 1);
+  assert.equal(error.attempts, 0);
+  assert.equal(wrapper._element.localName, 'australian-fire-watch-card');
+});
+
+test('falls back to ll-rebuild for older wrappers without load()', () => {
+  const env = environment(); const { wrapper, error } = missingCard();
+  wrapper.load = undefined;
+  env.document.children = [wrapper]; env.context.recover();
   assert.equal(error.attempts, 1);
-  error.ready = true; env.tick(1500); env.context.recover();
+});
+
+test('periodic recovery catches an error created after the startup window', () => {
+  const env = environment(); env.drain();
+  const { wrapper } = missingCard(); env.document.children = [wrapper];
+  env.runIntervals();
   assert.equal(wrapper._element.localName, 'australian-fire-watch-card');
 });
 
@@ -135,6 +166,7 @@ test('never replaces unrelated configuration errors', () => {
   for (const message of ['Invalid card configuration', "Custom element doesn't exist: other-card."]) {
     const { wrapper, error } = missingCard({ message });
     env.document.children = [wrapper]; env.context.recover();
+    assert.equal(wrapper.loadAttempts, 0);
     assert.equal(error.attempts, 0);
   }
 });
@@ -142,4 +174,5 @@ test('never replaces unrelated configuration errors', () => {
 test('extra-module and Lovelace loading do not duplicate recovery listeners', () => {
   const env = environment(); env.load();
   assert.equal(env.listeners.get('pageshow')?.length, 1);
+  assert.equal(env.intervals.length, 1);
 });
