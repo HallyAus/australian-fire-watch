@@ -16,6 +16,7 @@ from custom_components.australian_fire_watch.binary_sensor import (
 )
 from custom_components.australian_fire_watch.const import DOMAIN
 from custom_components.australian_fire_watch.model import Incident
+from custom_components.australian_fire_watch.coordinator import _quiet_hours_end
 
 from .conftest import cap, geo, snapshot
 
@@ -24,6 +25,16 @@ def entity_id(hass, entry, domain, key):
     return er.async_get(hass).async_get_entity_id(
         domain, DOMAIN, f"{entry.entry_id}_{key}"
     )
+
+
+def test_quiet_hours_use_home_assistant_local_time_and_cross_midnight():
+    evening = datetime(2026, 9, 13, 13, 30, tzinfo=timezone.utc)  # 23:30 Sydney
+    result = _quiet_hours_end(evening, "Australia/Sydney", "22:00:00", "07:00:00")
+    assert result == datetime(2026, 9, 13, 21, 0, tzinfo=timezone.utc)
+    midday = datetime(2026, 9, 13, 2, 0, tzinfo=timezone.utc)  # 12:00 Sydney
+    assert _quiet_hours_end(
+        midday, "Australia/Sydney", "22:00:00", "07:00:00"
+    ) is None
 
 
 async def test_setup_reload_unload_and_services(hass, entry, loaded):
@@ -280,6 +291,30 @@ async def test_lifecycle_and_outbox_are_saved_before_delivery(
     assert saved[0]["notification_outbox"]["pending"]
     assert not loaded._outbox.pending
     hass.services.async_remove("notify", "fixture_receiver")
+
+
+@pytest.mark.parametrize(
+    "entry", [{"notify_entities": ["notify.fixture_receiver"]}], indirect=True
+)
+async def test_modern_notification_entity_uses_send_message_target(hass, loaded):
+    calls = []
+
+    async def notify(call):
+        calls.append(call)
+
+    hass.services.async_register("notify", "send_message", notify)
+    loaded._outbox.stage(
+        ("entity:notify.fixture_receiver",),
+        "Fixture alert",
+        "Current warning",
+        {"tag": "fixture-modern-notify"},
+        now=datetime.now(timezone.utc),
+    )
+    await loaded._async_flush_notifications()
+    assert len(calls) == 1
+    assert calls[0].data["entity_id"] == "notify.fixture_receiver"
+    assert not loaded._outbox.pending
+    hass.services.async_remove("notify", "send_message")
 
 
 async def test_failed_atomic_save_rolls_back_lifecycle(loaded, feeds):

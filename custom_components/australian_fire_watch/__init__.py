@@ -31,10 +31,14 @@ from .const import (
     CONF_DISTRICT,
     CONF_EMERGENCY_RADIUS,
     CONF_ENABLE_BOM,
+    CONF_ENABLE_QUIET_HOURS,
     CONF_JURISDICTION,
     CONF_JURISDICTIONS,
     CONF_MONITOR_RADIUS,
+    CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_SERVICES,
+    CONF_QUIET_END,
+    CONF_QUIET_START,
     CONF_READINESS_ENTITIES,
     CONF_STALE_AFTER,
     CONF_UNCLASSIFIED_RADIUS,
@@ -46,9 +50,12 @@ from .const import (
     DEFAULT_DISTRICT,
     DEFAULT_EMERGENCY_RADIUS_KM,
     DEFAULT_ENABLE_BOM,
+    DEFAULT_ENABLE_QUIET_HOURS,
     DEFAULT_JURISDICTION,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
+    DEFAULT_QUIET_END,
+    DEFAULT_QUIET_START,
     DEFAULT_STALE_AFTER_MINUTES,
     DEFAULT_UNCLASSIFIED_RADIUS_KM,
     DEFAULT_WATCH_RADIUS_KM,
@@ -102,6 +109,17 @@ def _readiness_list(value: Any) -> list[str]:
     return list(dict.fromkeys(result))
 
 
+def _notify_entity_list(value: Any) -> list[str]:
+    result = [
+        cv.entity_id(str(item).strip())
+        for item in cv.ensure_list(value)
+        if str(item).strip()
+    ]
+    if any(not item.startswith("notify.") for item in result):
+        raise vol.Invalid("notification entities must use the notify domain")
+    return list(dict.fromkeys(result))
+
+
 YAML_ENTRY_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -119,7 +137,13 @@ YAML_ENTRY_SCHEMA = vol.Schema(
         ),
         vol.Optional(CONF_WEATHER_ENTITY): cv.entity_id,
         vol.Optional(CONF_READINESS_ENTITIES, default=[]): _readiness_list,
+        vol.Optional(CONF_NOTIFY_ENTITIES, default=[]): _notify_entity_list,
         vol.Optional(CONF_NOTIFY_SERVICES, default=[]): _notify_list,
+        vol.Optional(
+            CONF_ENABLE_QUIET_HOURS, default=DEFAULT_ENABLE_QUIET_HOURS
+        ): cv.boolean,
+        vol.Optional(CONF_QUIET_START, default=DEFAULT_QUIET_START): cv.time,
+        vol.Optional(CONF_QUIET_END, default=DEFAULT_QUIET_END): cv.time,
         vol.Optional(CONF_MONITOR_RADIUS, default=DEFAULT_MONITOR_RADIUS_KM): vol.All(
             vol.Coerce(float), vol.Range(min=1, max=500)
         ),

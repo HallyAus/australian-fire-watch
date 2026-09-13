@@ -37,7 +37,7 @@ function environment() {
   });
   function load() {
     vm.runInContext(`(() => { ${source}\nglobalThis.recover = recoverFailedFireWatchCards;
-      globalThis.cameraHelpers = { resolveCameraSites, normalizeIncident, renderIncidentCameras, renderCameraNetwork, renderCompactBomAttribution }; })()`, context);
+      globalThis.cameraHelpers = { resolveCameraSites, normalizeIncident, renderIncidentCameras, renderCameraNetwork, renderCompactBomAttribution, resolveDisplayOptions }; })()`, context);
   }
   load();
   return { context, document, intervals, listeners, load,
@@ -88,6 +88,40 @@ test('camera section handles disabled, empty and old summaries', () => {
   const credit = helpers.renderCompactBomAttribution();
   assert.ok(credit.includes('Weather data: Bureau of Meteorology'));
   assert.ok(!credit.includes('<img'), 'Mobile attribution should be readable text');
+});
+
+test('display presets are predictable and legacy compact cards remain compatible', () => {
+  const { resolveDisplayOptions } = environment().context.cameraHelpers;
+  const full = resolveDisplayOptions({});
+  assert.equal(full.mode, 'full');
+  assert.equal(full.showMap, true);
+  assert.equal(full.showCameras, true);
+
+  const map = resolveDisplayOptions({ display_mode: 'map_only', show_map: false });
+  assert.equal(map.showMap, true);
+  assert.equal(map.showSummary, false);
+  assert.equal(map.showIncidents, false);
+  assert.equal(map.showHealth, false);
+
+  const warnings = resolveDisplayOptions({ display_mode: 'warnings_only' });
+  assert.equal(warnings.showSummary, true);
+  assert.equal(warnings.showIncidents, true);
+  assert.equal(warnings.showHealth, true);
+  assert.equal(warnings.showCameras, false);
+
+  const custom = resolveDisplayOptions({
+    display_mode: 'custom',
+    show_cameras: false,
+    show_planned: false,
+  });
+  assert.equal(custom.showCameras, false);
+  assert.equal(custom.showPlanned, false);
+  assert.equal(custom.showMap, true);
+
+  const legacyCompact = resolveDisplayOptions({ compact: true, show_map: true });
+  assert.equal(legacyCompact.mode, 'compact');
+  assert.equal(legacyCompact.compact, true);
+  assert.equal(legacyCompact.showMap, true);
 });
 
 function missingCard({ message = "Custom element doesn't exist: australian-fire-watch-card.", ready = true } = {}) {

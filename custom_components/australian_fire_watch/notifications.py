@@ -31,6 +31,11 @@ def _datetime(value: Any) -> datetime | None:
     return result.replace(tzinfo=timezone.utc) if result.tzinfo is None else result
 
 
+def _valid_recipient(value: Any) -> bool:
+    recipient = str(value or "")
+    return recipient.startswith("notify.") or recipient.startswith("entity:notify.")
+
+
 class NotificationOutbox:
     """Keep the newest pending notification for each recipient and mobile tag."""
 
@@ -41,7 +46,7 @@ class NotificationOutbox:
             for key, value in (saved.get("pending") or {}).items()
             if isinstance(value, Mapping)
             and isinstance(value.get("payload"), Mapping)
-            and str(value.get("service", "")).startswith("notify.")
+            and _valid_recipient(value.get("service"))
         }
         self.last_error: str | None = saved.get("last_error")
         self.last_success: str | None = saved.get("last_success")
@@ -89,10 +94,14 @@ class NotificationOutbox:
         now: datetime,
         incident_id: str | None = None,
         expires_at: datetime | None = None,
+        not_before: datetime | None = None,
     ) -> None:
         """Stage synchronously; the owner must save before calling flush."""
         tag = str(data["tag"])
-        deadline = min(now + MAX_AGE, expires_at) if expires_at else now + MAX_AGE
+        first_attempt = max(now, not_before) if not_before else now
+        deadline = first_attempt + MAX_AGE
+        if expires_at:
+            deadline = min(deadline, expires_at)
         payload = {"title": title, "message": message, "data": deepcopy(data)}
         fingerprint = sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
         for service in services:
@@ -106,7 +115,7 @@ class NotificationOutbox:
                 "payload": deepcopy(payload),
                 "created_at": now.isoformat(),
                 "expires_at": deadline.isoformat(),
-                "next_attempt": now.isoformat(),
+                "next_attempt": first_attempt.isoformat(),
                 "attempts": 0,
             }
 

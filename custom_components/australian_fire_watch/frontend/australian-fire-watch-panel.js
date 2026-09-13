@@ -2511,6 +2511,67 @@ const renderHealth = (model, busy) => {
   `;
 };
 
+const DISPLAY_MODES = new Set(["full", "compact", "map_only", "warnings_only", "custom"]);
+
+const resolveDisplayOptions = (config = {}) => {
+  const requested = String(config.display_mode || "").trim().toLowerCase();
+  const mode = DISPLAY_MODES.has(requested)
+    ? requested
+    : asBoolean(config.compact) === true
+      ? "compact"
+      : "full";
+  const full = {
+    mode,
+    compact: false,
+    showSummary: true,
+    showMap: config.show_map !== false,
+    showIncidents: true,
+    showDanger: true,
+    showReadiness: config.show_readiness !== false,
+    showPlanned: true,
+    showCameras: true,
+    showHealth: true,
+  };
+  if (mode === "compact") {
+    return { ...full, compact: true, showMap: config.show_map === true };
+  }
+  if (mode === "map_only") {
+    return {
+      ...full,
+      showSummary: false,
+      showMap: true,
+      showIncidents: false,
+      showDanger: false,
+      showReadiness: false,
+      showPlanned: false,
+      showCameras: false,
+      showHealth: false,
+    };
+  }
+  if (mode === "warnings_only") {
+    return {
+      ...full,
+      showMap: false,
+      showDanger: false,
+      showReadiness: false,
+      showPlanned: false,
+      showCameras: false,
+    };
+  }
+  if (mode === "custom") {
+    return {
+      ...full,
+      showSummary: config.show_summary !== false,
+      showIncidents: config.show_incidents !== false,
+      showDanger: config.show_danger !== false,
+      showPlanned: config.show_planned !== false,
+      showCameras: config.show_cameras !== false,
+      showHealth: config.show_health !== false,
+    };
+  }
+  return full;
+};
+
 class AustralianFireWatchBase extends HTMLElement {
   constructor() {
     super();
@@ -2603,16 +2664,19 @@ class AustralianFireWatchBase extends HTMLElement {
   }
 
   getCardSize() {
-    if (asBoolean(this._config.compact) === true) {
-      return this._config.show_map === true ? 8 : 4;
+    const display = resolveDisplayOptions(this._config);
+    if (display.compact) {
+      return display.showMap ? 8 : 4;
     }
+    if (display.mode === "map_only") return 8;
     return 12;
   }
 
   _render(force = false, suppliedModel = null) {
     if (!this.isConnected && !force) return;
     const model = suppliedModel || normalizeModel(this._hass, this._config);
-    const compact = asBoolean(this._config.compact) === true;
+    const display = resolveDisplayOptions(this._config);
+    const compact = display.compact;
     const token = ++this._renderToken;
     this._destroyIncidentMap();
 
@@ -2657,17 +2721,14 @@ class AustralianFireWatchBase extends HTMLElement {
     }
 
     if (compact) {
-      const showMap = this._config.show_map === true;
       this.shadowRoot.innerHTML = `
         <style>${STYLES}</style>
-        ${renderCompact(model, this._config.title, showMap)}
+        ${renderCompact(model, this._config.title, display.showMap)}
       `;
-      if (showMap) this._mountIncidentMap(model, token);
+      if (display.showMap) this._mountIncidentMap(model, token);
       return;
     }
 
-    const showReadiness = this._config.show_readiness !== false;
-    const showMap = this._config.show_map !== false;
     const notice = this._notice
       ? `<div class="notice ${this._notice.error ? "error" : ""}" role="status" aria-live="polite">${escapeHtml(
           this._notice.message,
@@ -2682,22 +2743,22 @@ class AustralianFireWatchBase extends HTMLElement {
         )}</h1>
         ${renderCommandNav(model, this._config.title)}
         ${notice}
-        ${renderCommandBrief(model, this._busy)}
-        <div class="operations-grid">
-          ${showMap ? renderMap() : ""}
-          ${renderIncidentList(model, this._showAllIncidents)}
-        </div>
-        <section class="surface detail-hub" aria-label="More fire information and settings">
-          ${renderDangerDetails(model)}
-          ${showReadiness ? renderReadiness(model) : ""}
-          ${renderPlannedBurns(model)}
-          ${renderCameraNetwork(model)}
-          ${renderHealth(model, this._busy)}
-        </section>
+        ${display.showSummary ? renderCommandBrief(model, this._busy) : ""}
+        ${display.showMap || display.showIncidents ? `<div class="operations-grid">
+          ${display.showMap ? renderMap() : ""}
+          ${display.showIncidents ? renderIncidentList(model, this._showAllIncidents) : ""}
+        </div>` : ""}
+        ${display.showDanger || display.showReadiness || display.showPlanned || display.showCameras || display.showHealth ? `<section class="surface detail-hub" aria-label="More fire information and settings">
+          ${display.showDanger ? renderDangerDetails(model) : ""}
+          ${display.showReadiness ? renderReadiness(model) : ""}
+          ${display.showPlanned ? renderPlannedBurns(model) : ""}
+          ${display.showCameras ? renderCameraNetwork(model) : ""}
+          ${display.showHealth ? renderHealth(model, this._busy) : ""}
+        </section>` : ""}
       </main>
     `;
 
-    if (showMap) this._mountIncidentMap(model, token);
+    if (display.showMap) this._mountIncidentMap(model, token);
   }
 
   _destroyIncidentMap() {
@@ -2906,6 +2967,7 @@ class AustralianFireWatchCardEditor extends HTMLElement {
             state.attributes?.friendly_name || entityId,
           ])
       : [];
+    const display = resolveDisplayOptions(this._config);
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; padding: 12px 0; color: var(--primary-text-color); font: 16px/1.4 system-ui, sans-serif; }
@@ -2913,6 +2975,10 @@ class AustralianFireWatchCardEditor extends HTMLElement {
         input, select { min-height: 44px; padding: 8px 10px; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--card-background-color); color: var(--primary-text-color); font: inherit; }
         .check { display: flex; align-items: center; gap: 9px; min-height: 44px; }
         .check input { width: 22px; min-height: 22px; }
+        fieldset { margin: 0; padding: 12px; border: 1px solid var(--divider-color); border-radius: 10px; }
+        legend { padding: 0 5px; font-weight: 700; }
+        .help { margin: -4px 0 12px; color: var(--secondary-text-color); font-size: .9rem; }
+        [hidden] { display: none !important; }
         p { color: var(--secondary-text-color); }
       </style>
       <p>Select the summary entity created for the monitored location.</p>
@@ -2934,15 +3000,27 @@ class AustralianFireWatchCardEditor extends HTMLElement {
           this._config.title || "Australian Fire Watch",
         )}" />
       </label>
-      <label class="check"><input id="compact" type="checkbox" ${
-        asBoolean(this._config.compact) === true ? "checked" : ""
-      } /> Compact Home-card mode</label>
-      <label class="check"><input id="show-map" type="checkbox" ${
-        this._config.show_map !== false ? "checked" : ""
-      } /> Show incident map</label>
-      <label class="check"><input id="show-readiness" type="checkbox" ${
-        this._config.show_readiness !== false ? "checked" : ""
-      } /> Show household readiness</label>
+      <label>Display preset
+        <select id="display-mode">
+          <option value="full" ${display.mode === "full" ? "selected" : ""}>Full command centre</option>
+          <option value="compact" ${display.mode === "compact" ? "selected" : ""}>Compact Home card</option>
+          <option value="map_only" ${display.mode === "map_only" ? "selected" : ""}>Map only</option>
+          <option value="warnings_only" ${display.mode === "warnings_only" ? "selected" : ""}>Warnings only</option>
+          <option value="custom" ${display.mode === "custom" ? "selected" : ""}>Custom sections</option>
+        </select>
+      </label>
+      <p class="help">Presets keep setup simple. Choose Custom sections only when you need individual controls.</p>
+      <fieldset ${display.mode === "custom" ? "" : "hidden"}>
+        <legend>Custom sections</legend>
+        <label class="check"><input id="show-summary" type="checkbox" ${display.showSummary ? "checked" : ""} /> Status summary and priority incident</label>
+        <label class="check"><input id="show-map" type="checkbox" ${display.showMap ? "checked" : ""} /> Incident map</label>
+        <label class="check"><input id="show-incidents" type="checkbox" ${display.showIncidents ? "checked" : ""} /> Current incidents</label>
+        <label class="check"><input id="show-danger" type="checkbox" ${display.showDanger ? "checked" : ""} /> Fire conditions and weather</label>
+        <label class="check"><input id="show-readiness" type="checkbox" ${display.showReadiness ? "checked" : ""} /> Household readiness</label>
+        <label class="check"><input id="show-planned" type="checkbox" ${display.showPlanned ? "checked" : ""} /> Planned activity</label>
+        <label class="check"><input id="show-cameras" type="checkbox" ${display.showCameras ? "checked" : ""} /> Watchtowers cameras</label>
+        <label class="check"><input id="show-health" type="checkbox" ${display.showHealth ? "checked" : ""} /> Sources, alerts and data health</label>
+      </fieldset>
     `;
     this.shadowRoot.querySelectorAll("input, select").forEach((element) => {
       element.addEventListener("change", () => this._changed());
@@ -2952,14 +3030,22 @@ class AustralianFireWatchCardEditor extends HTMLElement {
   _changed() {
     const entity = this.shadowRoot.getElementById("entity")?.value;
     const title = this.shadowRoot.getElementById("title")?.value;
+    const displayMode = this.shadowRoot.getElementById("display-mode")?.value || "full";
     const config = {
       ...this._config,
       ...(entity ? { entity } : {}),
       title: title || "Australian Fire Watch",
-      compact: this.shadowRoot.getElementById("compact")?.checked === true,
+      display_mode: displayMode,
+      compact: displayMode === "compact",
+      show_summary: this.shadowRoot.getElementById("show-summary")?.checked !== false,
       show_map: this.shadowRoot.getElementById("show-map")?.checked !== false,
+      show_incidents: this.shadowRoot.getElementById("show-incidents")?.checked !== false,
+      show_danger: this.shadowRoot.getElementById("show-danger")?.checked !== false,
       show_readiness:
         this.shadowRoot.getElementById("show-readiness")?.checked !== false,
+      show_planned: this.shadowRoot.getElementById("show-planned")?.checked !== false,
+      show_cameras: this.shadowRoot.getElementById("show-cameras")?.checked !== false,
+      show_health: this.shadowRoot.getElementById("show-health")?.checked !== false,
     };
     if (!entity) delete config.entity;
     this._config = config;
@@ -2970,6 +3056,7 @@ class AustralianFireWatchCardEditor extends HTMLElement {
         detail: { config },
       }),
     );
+    this._render();
   }
 }
 
@@ -2992,6 +3079,7 @@ class AustralianFireWatchDashboardStrategy extends HTMLElement {
       type: "custom:australian-fire-watch-card",
       ...(entity ? { entity } : {}),
       title: firstPresent(config.card_title, "Australian Fire Watch"),
+      display_mode: firstPresent(config.display_mode, "full"),
       show_map: config.show_map !== false,
       show_readiness: config.show_readiness !== false,
       ...(config.zone_entity ? { zone_entity: config.zone_entity } : {}),
