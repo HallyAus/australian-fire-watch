@@ -36,9 +36,13 @@ from .const import (
     CONF_DISTRICT,
     CONF_EMERGENCY_RADIUS,
     CONF_ENABLE_BOM,
+    CONF_ENABLE_QUIET_HOURS,
     CONF_MONITOR_RADIUS,
     CONF_NAME,
+    CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_SERVICES,
+    CONF_QUIET_END,
+    CONF_QUIET_START,
     CONF_READINESS_ENTITIES,
     CONF_STALE_AFTER,
     CONF_UNCLASSIFIED_RADIUS,
@@ -49,8 +53,11 @@ from .const import (
     DEFAULT_DISTRICT,
     DEFAULT_EMERGENCY_RADIUS_KM,
     DEFAULT_ENABLE_BOM,
+    DEFAULT_ENABLE_QUIET_HOURS,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
+    DEFAULT_QUIET_END,
+    DEFAULT_QUIET_START,
     DEFAULT_STALE_AFTER_MINUTES,
     DEFAULT_UNCLASSIFIED_RADIUS_KM,
     DEFAULT_WATCH_RADIUS_KM,
@@ -773,7 +780,12 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         location_name = str(self.config.get(CONF_NAME, DEFAULT_NAME))
         zone_entity_id = str(self.config.get(CONF_ZONE, DEFAULT_ZONE))
         monitored_latitude, monitored_longitude = self._home_coordinates()
-        alert_targets = _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
+        alert_targets = tuple(
+            dict.fromkeys(
+                recipient.removeprefix("entity:")
+                for recipient in _notification_recipients(self.config)
+            )
+        )
         return {
             "status": status,
             "entry_id": self.entry.entry_id,
@@ -1046,7 +1058,22 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._store.async_save(self._persistent_state())
 
     async def _async_flush_notifications(self) -> bool:
-        async def send(full_service: str, payload: dict[str, Any]) -> None:
+        async def send(recipient: str, payload: dict[str, Any]) -> None:
+            if recipient.startswith("entity:"):
+                entity_id = recipient.removeprefix("entity:")
+                if not self.hass.services.has_service("notify", "send_message"):
+                    raise HomeAssistantError(
+                        "Notification action notify.send_message is unavailable"
+                    )
+                await self.hass.services.async_call(
+                    "notify",
+                    "send_message",
+                    payload,
+                    blocking=True,
+                    target={"entity_id": entity_id},
+                )
+                return
+            full_service = recipient
             _, service = full_service.split(".", 1)
             if not self.hass.services.has_service("notify", service):
                 raise HomeAssistantError(
@@ -1059,7 +1086,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return await self._outbox.async_flush(
             send,
             self._async_save_state,
-            services=_notify_services(self.config.get(CONF_NOTIFY_SERVICES, [])),
+            services=_notification_recipients(self.config),
         )
 
     def _publish_local_data(self) -> None:
@@ -1080,7 +1107,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     ) -> None:
         payloads: list[dict[str, Any]] = []
         direct_delivery_configured = bool(
-            _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
+            _notification_recipients(self.config)
         )
         for event in events:
             notification_allowed = self._notification_allowed(event)
@@ -1180,7 +1207,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return until is None or until <= datetime.now(timezone.utc)
 
     async def _async_notify(self, event: LifecycleEvent, *, test: bool) -> None:
-        services = _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
+        services = _notification_recipients(self.config)
         if not services:
             return
         incident = event.incident
@@ -1297,6 +1324,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
         priority = incident_notification_priority(event, test=test)
         _apply_notification_priority(data, priority, "incident")
+        now = datetime.now(timezone.utc)
         await self._async_send_notification(
             services,
             title,
@@ -1304,10 +1332,13 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data,
             incident_id=event.incident_id,
             expires_at=incident.expires_at if incident else None,
+            not_before=self._routine_notification_not_before(
+                event.lifecycle, priority, now
+            ),
         )
 
     async def _async_notify_danger(self, event: DangerLifecycleEvent) -> None:
-        services = _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
+        services = _notification_recipients(self.config)
         if not services:
             return
         detail = dict(event.danger)
@@ -1330,7 +1361,16 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
         priority = danger_notification_priority(detail, event.lifecycle)
         _apply_notification_priority(data, priority, "danger")
-        await self._async_send_notification(services, title, message, data)
+        now = datetime.now(timezone.utc)
+        await self._async_send_notification(
+            services,
+            title,
+            message,
+            data,
+            not_before=self._routine_notification_not_before(
+                event.lifecycle, priority, now
+            ),
+        )
 
     async def _async_send_notification(
         self,
@@ -1341,6 +1381,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         *,
         incident_id: str | None = None,
         expires_at: datetime | None = None,
+        not_before: datetime | None = None,
     ) -> None:
         self._outbox.stage(
             services,
@@ -1350,6 +1391,26 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             now=datetime.now(timezone.utc),
             incident_id=incident_id,
             expires_at=expires_at,
+            not_before=not_before,
+        )
+
+    def _routine_notification_not_before(
+        self, lifecycle: str, priority: str, now: datetime
+    ) -> datetime | None:
+        """Defer only low-risk routine updates that occur during quiet hours."""
+        if (
+            not self.config.get(
+                CONF_ENABLE_QUIET_HOURS, DEFAULT_ENABLE_QUIET_HOURS
+            )
+            or priority != "normal"
+            or lifecycle not in {"updated", "deescalated", "resolved", "left_radius"}
+        ):
+            return None
+        return _quiet_hours_end(
+            now,
+            str(self.hass.config.time_zone),
+            self.config.get(CONF_QUIET_START, DEFAULT_QUIET_START),
+            self.config.get(CONF_QUIET_END, DEFAULT_QUIET_END),
         )
 
     async def async_acknowledge(self, incident_id: str) -> None:
@@ -1437,7 +1498,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "notification_allowed": True,
                 "delivery_priority": "normal",
                 "direct_delivery_configured": bool(
-                    _notify_services(self.config.get(CONF_NOTIFY_SERVICES, []))
+                    _notification_recipients(self.config)
                 ),
                 "summary": f"TEST — {normalized}",
                 "recommended_action": "Verify delivery only; no incident exists.",
@@ -1607,6 +1668,45 @@ def _discard_expired(values: dict[str, str], now: datetime) -> None:
             values.pop(key, None)
 
 
+def _clock_time(value: Any):
+    try:
+        return datetime.strptime(str(value), "%H:%M:%S").time()
+    except ValueError:
+        try:
+            return datetime.strptime(str(value), "%H:%M").time()
+        except ValueError:
+            return None
+
+
+def _quiet_hours_end(
+    now: datetime, time_zone: str, start_value: Any, end_value: Any
+) -> datetime | None:
+    """Return the next quiet-hours end in UTC, or None when outside the window."""
+    start = _clock_time(start_value)
+    end = _clock_time(end_value)
+    if start is None or end is None or start == end:
+        return None
+    try:
+        zone = ZoneInfo(time_zone)
+    except (KeyError, ValueError):
+        zone = timezone.utc
+    local_now = now.astimezone(zone)
+    clock = local_now.time().replace(tzinfo=None)
+    if start < end:
+        in_quiet_hours = start <= clock < end
+        end_date = local_now.date()
+    else:
+        in_quiet_hours = clock >= start or clock < end
+        end_date = (
+            local_now.date() + timedelta(days=1)
+            if clock >= start
+            else local_now.date()
+        )
+    if not in_quiet_hours:
+        return None
+    return datetime.combine(end_date, end, tzinfo=zone).astimezone(timezone.utc)
+
+
 def _notify_services(value: Any) -> tuple[str, ...]:
     if isinstance(value, str):
         raw = value.replace("\n", ",").split(",")
@@ -1623,6 +1723,34 @@ def _notify_services(value: Any) -> tuple[str, ...]:
             and "." in text
         )
     )
+
+
+def _notify_entities(value: Any) -> tuple[str, ...]:
+    if isinstance(value, str):
+        raw = [value]
+    elif isinstance(value, (list, tuple, set)):
+        raw = value
+    else:
+        raw = []
+    return tuple(
+        dict.fromkeys(
+            text
+            for item in raw
+            if (text := str(item).strip())
+            and text.startswith("notify.")
+            and "." in text
+        )
+    )
+
+
+def _notification_recipients(config: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return stable outbox keys for modern entities and legacy actions."""
+    entities = tuple(
+        f"entity:{entity}"
+        for entity in _notify_entities(config.get(CONF_NOTIFY_ENTITIES, []))
+    )
+    services = _notify_services(config.get(CONF_NOTIFY_SERVICES, []))
+    return tuple(dict.fromkeys((*entities, *services)))
 
 
 def _recommended_action(status: str) -> str:

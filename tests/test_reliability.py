@@ -390,6 +390,39 @@ class OutboxTests(unittest.IsolatedAsyncioTestCase):
         normal.suppress("fixture")
         self.assertFalse(normal.pending)
 
+    def test_notification_entity_recipient_survives_restart(self):
+        box = NotificationOutbox()
+        self.stage(box, services=("entity:notify.fixture_entity",))
+        restored = NotificationOutbox(box.export())
+        self.assertEqual(len(restored.pending), 1)
+        self.assertEqual(
+            next(iter(restored.pending.values()))["service"],
+            "entity:notify.fixture_entity",
+        )
+
+    async def test_deferred_notification_waits_and_retains_delivery_window(self):
+        box = NotificationOutbox()
+        not_before = NOW + timedelta(hours=7)
+        box.stage(
+            ("notify.fixture_a",),
+            "Routine update",
+            "Resolved",
+            {"tag": "fixture-deferred"},
+            now=NOW,
+            not_before=not_before,
+        )
+        send = AsyncMock()
+        await box.async_flush(send, AsyncMock(), services=("notify.fixture_a",), now=NOW)
+        send.assert_not_awaited()
+        await box.async_flush(
+            send,
+            AsyncMock(),
+            services=("notify.fixture_a",),
+            now=not_before,
+        )
+        send.assert_awaited_once()
+        self.assertFalse(box.pending)
+
 
 if __name__ == "__main__":
     unittest.main()

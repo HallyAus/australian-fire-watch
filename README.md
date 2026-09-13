@@ -30,8 +30,9 @@ creates native geo-location entities, and can send lifecycle-aware notifications
 
 The Home Assistant integration domain is `australian_fire_watch`.
 
-Version 1.3.3 adds compatibility with the SA CFS Atom-wrapped CAP feed and a
-scheduled live contract check for upstream publisher format changes.
+Version 1.4.0 adds simple dashboard display presets and Home Assistant's modern
+notification-entity picker. Existing cards and legacy `notify.*` actions remain
+fully supported. It also includes the SA CFS feed reliability work from 1.3.3.
 
 > **Safety**
 >
@@ -127,15 +128,29 @@ The integration registers `/australian-fire-watch` as its sidebar dashboard.
 The same UI is available as a card:
 
     type: custom:australian-fire-watch-card
-    show_map: true
-    show_readiness: true
+    display_mode: full
 
 For a compact Home view:
 
     type: custom:australian-fire-watch-card
-    compact: true
+    display_mode: compact
     show_map: false
-    show_readiness: false
+
+Focused presets are available without managing a wall of section switches:
+
+    # Map without the command-centre details
+    type: custom:australian-fire-watch-card
+    display_mode: map_only
+
+    # Warning summary, incidents and feed health
+    type: custom:australian-fire-watch-card
+    display_mode: warnings_only
+
+Choose **Custom sections** in the visual editor for individual controls. YAML
+users can set `display_mode: custom` and use `show_summary`, `show_map`,
+`show_incidents`, `show_danger`, `show_readiness`, `show_planned`,
+`show_cameras`, and `show_health`. Existing `compact: true` configurations are
+still recognised.
 
 If more than one location is configured, set the summary sensor explicitly:
 
@@ -293,7 +308,10 @@ or territory source. Unknown never becomes No Rating.
 
 ## Notifications
 
-Enter one or more fully-qualified notify.* services in the integration options.
+Select one or more **Notification recipients** in the integration options. The
+picker uses Home Assistant's modern `notify.send_message` entity action. Existing
+fully-qualified `notify.*` actions remain supported in the separate legacy field,
+so upgrades do not break established phone notifications.
 Direct notification delivery, mobile acknowledgement and snooze actions, and
 safe test alerts are built into the integration; a separate automation is not
 required.
@@ -315,6 +333,12 @@ Emergency Warning updates cannot be silenced by acknowledgement or snooze.
 Android and iOS notification priorities are derived from the official warning
 level. Test alerts are clearly labelled and never use the critical path.
 
+Optional quiet hours can defer normal-priority updates, de-escalations,
+out-of-radius notices, and feed resolutions until a sensible local time. They
+never delay new warnings, escalations, time-sensitive or critical delivery,
+Emergency Warnings, dangerous fire conditions, or user-triggered tests. Quiet
+hours are off by default and use Home Assistant's configured time zone.
+
 An optional blueprint for users who want to own the alert automation is available
 at `blueprints/automation/hallyaus/australian_fire_watch_assigned_alerts.yaml`.
 
@@ -330,6 +354,11 @@ UI setup is recommended. YAML import is also supported:
       jurisdictions:
         - NSW
         - QLD
+      notify_entities:
+        - notify.mobile_app_<your_phone>
+      enable_quiet_hours: true
+      quiet_start: "22:00:00"
+      quiet_end: "07:00:00"
       fire_danger_district: Greater Sydney Region
       monitor_radius_km: 150
       emergency_radius_km: 100

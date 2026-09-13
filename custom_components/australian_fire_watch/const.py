@@ -8,7 +8,7 @@ from typing import Any
 
 DOMAIN = "australian_fire_watch"
 NAME = "Australian Fire Watch"
-VERSION = "1.3.3"
+VERSION = "1.4.0"
 CONFIG_ENTRY_VERSION = 2
 
 PLATFORMS = ["sensor", "binary_sensor", "geo_location"]
@@ -21,7 +21,11 @@ CONF_ZONE = "zone"
 CONF_DISTRICT = "fire_danger_district"
 CONF_WEATHER_ENTITY = "weather_entity"
 CONF_READINESS_ENTITIES = "readiness_entities"
+CONF_NOTIFY_ENTITIES = "notify_entities"
 CONF_NOTIFY_SERVICES = "notify_services"
+CONF_ENABLE_QUIET_HOURS = "enable_quiet_hours"
+CONF_QUIET_START = "quiet_start"
+CONF_QUIET_END = "quiet_end"
 CONF_MONITOR_RADIUS = "monitor_radius_km"
 CONF_EMERGENCY_RADIUS = "emergency_radius_km"
 CONF_WATCH_RADIUS = "watch_radius_km"
@@ -41,6 +45,9 @@ DEFAULT_ADVICE_RADIUS_KM = 20.0
 DEFAULT_UNCLASSIFIED_RADIUS_KM = 10.0
 DEFAULT_STALE_AFTER_MINUTES = 45
 DEFAULT_ENABLE_BOM = True
+DEFAULT_ENABLE_QUIET_HOURS = False
+DEFAULT_QUIET_START = "22:00:00"
+DEFAULT_QUIET_END = "07:00:00"
 
 
 def jurisdiction_codes(data: Mapping[str, Any]) -> tuple[str, ...]:

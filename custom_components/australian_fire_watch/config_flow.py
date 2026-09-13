@@ -16,11 +16,15 @@ from .const import (
     CONF_DISTRICT,
     CONF_EMERGENCY_RADIUS,
     CONF_ENABLE_BOM,
+    CONF_ENABLE_QUIET_HOURS,
     CONF_JURISDICTION,
     CONF_JURISDICTIONS,
     CONF_MONITOR_RADIUS,
     CONF_NAME,
+    CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_SERVICES,
+    CONF_QUIET_END,
+    CONF_QUIET_START,
     CONF_READINESS_ENTITIES,
     CONF_STALE_AFTER,
     CONF_UNCLASSIFIED_RADIUS,
@@ -32,8 +36,11 @@ from .const import (
     DEFAULT_DISTRICT,
     DEFAULT_EMERGENCY_RADIUS_KM,
     DEFAULT_ENABLE_BOM,
+    DEFAULT_ENABLE_QUIET_HOURS,
     DEFAULT_MONITOR_RADIUS_KM,
     DEFAULT_NAME,
+    DEFAULT_QUIET_END,
+    DEFAULT_QUIET_START,
     DEFAULT_STALE_AFTER_MINUTES,
     DEFAULT_UNCLASSIFIED_RADIUS_KM,
     DEFAULT_WATCH_RADIUS_KM,
@@ -101,9 +108,29 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             )
         ),
         vol.Optional(
+            CONF_NOTIFY_ENTITIES,
+            description={"suggested_value": defaults.get(CONF_NOTIFY_ENTITIES, [])},
+        ): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="notify", multiple=True, reorder=True)
+        ),
+        vol.Optional(
             CONF_NOTIFY_SERVICES,
             description={"suggested_value": notify_default},
         ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
+        vol.Required(
+            CONF_ENABLE_QUIET_HOURS,
+            default=defaults.get(
+                CONF_ENABLE_QUIET_HOURS, DEFAULT_ENABLE_QUIET_HOURS
+            ),
+        ): selector.BooleanSelector(),
+        vol.Required(
+            CONF_QUIET_START,
+            default=str(defaults.get(CONF_QUIET_START, DEFAULT_QUIET_START)),
+        ): selector.TimeSelector(),
+        vol.Required(
+            CONF_QUIET_END,
+            default=str(defaults.get(CONF_QUIET_END, DEFAULT_QUIET_END)),
+        ): selector.TimeSelector(),
         vol.Required(
             CONF_MONITOR_RADIUS,
             default=defaults.get(CONF_MONITOR_RADIUS, DEFAULT_MONITOR_RADIUS_KM),
@@ -174,6 +201,14 @@ def _prepare(data: dict[str, Any]) -> dict[str, Any]:
         # district rating for a location configured in another jurisdiction.
         result[CONF_DISTRICT] = ""
     result[CONF_NOTIFY_SERVICES] = _notify_list(result.get(CONF_NOTIFY_SERVICES, []))
+    notify_entities = result.get(CONF_NOTIFY_ENTITIES, [])
+    result[CONF_NOTIFY_ENTITIES] = (
+        list(notify_entities) if isinstance(notify_entities, list) else []
+    )
+    result[CONF_QUIET_START] = str(
+        result.get(CONF_QUIET_START, DEFAULT_QUIET_START)
+    )
+    result[CONF_QUIET_END] = str(result.get(CONF_QUIET_END, DEFAULT_QUIET_END))
     readiness = result.get(CONF_READINESS_ENTITIES, [])
     result[CONF_READINESS_ENTITIES] = (
         list(readiness) if isinstance(readiness, list) else []
@@ -197,6 +232,11 @@ def _valid(data: dict[str, Any]) -> bool:
         return False
     services = _notify_list(data.get(CONF_NOTIFY_SERVICES, []))
     if any(not item.startswith("notify.") for item in services):
+        return False
+    entities = data.get(CONF_NOTIFY_ENTITIES, [])
+    if not isinstance(entities, list) or any(
+        not str(item).startswith("notify.") for item in entities
+    ):
         return False
     monitor = float(data[CONF_MONITOR_RADIUS])
     radii = [
