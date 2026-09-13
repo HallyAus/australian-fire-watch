@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from homeassistant.helpers import entity_registry as er
@@ -297,6 +297,12 @@ async def test_lifecycle_and_outbox_are_saved_before_delivery(
     "entry", [{"notify_entities": ["notify.fixture_receiver"]}], indirect=True
 )
 async def test_modern_notification_entity_uses_send_message_target(hass, loaded):
+    calls = []
+
+    async def notify(call):
+        calls.append(call)
+
+    hass.services.async_register("notify", "send_message", notify)
     loaded._outbox.stage(
         ("entity:notify.fixture_receiver",),
         "Fixture alert",
@@ -304,17 +310,11 @@ async def test_modern_notification_entity_uses_send_message_target(hass, loaded)
         {"tag": "fixture-modern-notify"},
         now=datetime.now(timezone.utc),
     )
-    with (
-        patch.object(hass.services, "has_service", return_value=True),
-        patch.object(hass.services, "async_call", new_callable=AsyncMock) as call,
-    ):
-        await loaded._async_flush_notifications()
-    call.assert_awaited_once()
-    assert call.await_args.args[:2] == ("notify", "send_message")
-    assert call.await_args.kwargs["target"] == {
-        "entity_id": "notify.fixture_receiver"
-    }
+    await loaded._async_flush_notifications()
+    assert len(calls) == 1
+    assert calls[0].data["entity_id"] == ["notify.fixture_receiver"]
     assert not loaded._outbox.pending
+    hass.services.async_remove("notify", "send_message")
 
 
 async def test_failed_atomic_save_rolls_back_lifecycle(loaded, feeds):
