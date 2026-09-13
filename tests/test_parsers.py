@@ -102,6 +102,56 @@ class ParserTests(unittest.TestCase):
         )
         self.assertEqual(["live"], [incident.id for incident in parsed.incidents])
 
+    def test_cap_accepts_sa_atom_wrapper_and_ignores_non_actual_alerts(self) -> None:
+        parsed = parse_cap(
+            """
+            <feed xmlns="http://www.w3.org/2005/Atom"
+                  xmlns:cap="urn:oasis:names:tc:emergency:cap:1.2">
+              <updated>2026-09-13T10:58:38+09:30</updated>
+              <entry><content type="text/xml">
+                <cap:alert>
+                  <cap:identifier>sa-live</cap:identifier>
+                  <cap:status>Actual</cap:status>
+                  <cap:sent>2026-09-13T10:45:00+09:30</cap:sent>
+                  <cap:info>
+                    <cap:event>Bushfire</cap:event>
+                    <cap:headline>Range Road</cap:headline>
+                    <cap:area>
+                      <cap:areaDesc>Range Road</cap:areaDesc>
+                      <cap:circle>-35.1,138.6 1</cap:circle>
+                    </cap:area>
+                  </cap:info>
+                </cap:alert>
+              </content></entry>
+              <entry><content type="text/xml">
+                <cap:alert>
+                  <cap:identifier>sa-test</cap:identifier>
+                  <cap:status>Test</cap:status>
+                  <cap:info><cap:event>Bushfire</cap:event></cap:info>
+                </cap:alert>
+              </content></entry>
+            </feed>
+            """,
+            source="South Australian Country Fire Service",
+            official_url="https://www.cfs.sa.gov.au/warnings-restrictions/warnings/",
+        )
+        self.assertEqual(["sa-live"], [incident.id for incident in parsed.incidents])
+        self.assertEqual("2026-09-13T01:28:38+00:00", parsed.generated_at.isoformat())
+
+    def test_cap_accepts_timestamped_empty_atom_feed(self) -> None:
+        parsed = parse_cap(
+            """
+            <feed xmlns="http://www.w3.org/2005/Atom">
+              <updated>2026-09-13T10:58:38+09:30</updated>
+            </feed>
+            """
+        )
+        self.assertFalse(parsed.incidents)
+
+    def test_cap_rejects_unverifiable_empty_atom_feed(self) -> None:
+        with self.assertRaises(FeedParseError):
+            parse_cap('<feed xmlns="http://www.w3.org/2005/Atom" />')
+
     def test_geojson_reports_raw_feature_count_for_snapshot_validation(self) -> None:
         payload = {
             "type": "FeatureCollection",

@@ -199,14 +199,17 @@ def parse_cap(
     source: str = "NSW RFS CAP",
     official_url: str = OFFICIAL_INCIDENTS_URL,
 ) -> ParsedFeed:
-    """Parse CAP-AU alerts embedded in an EDXL distribution."""
+    """Parse CAP-AU alerts, including publisher Atom feed wrappers."""
     root = _safe_xml(payload)
-    if _local(root).casefold() not in {"distribution", "edxldistribution", "alert"}:
-        raise FeedParseError("Expected CAP alert or EDXL distribution")
-    generated_at = _parse_datetime(_text(root, "dateTimeSent"))
+    root_kind = _local(root).casefold()
+    if root_kind not in {"distribution", "edxldistribution", "alert", "feed"}:
+        raise FeedParseError("Expected CAP alert, EDXL distribution, or Atom feed")
+    generated_at = _parse_datetime(
+        _text(root, "updated") if root_kind == "feed" else _text(root, "dateTimeSent")
+    )
     alerts = _descendants(root, "alert")
     if not alerts and generated_at is None:
-        raise FeedParseError("Empty CAP distribution has no generation timestamp")
+        raise FeedParseError("Empty CAP product has no generation timestamp")
     complete = True
     incidents: list[Incident] = []
     for alert in alerts:
