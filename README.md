@@ -30,6 +30,9 @@ creates native geo-location entities, and can send lifecycle-aware notifications
 
 The Home Assistant integration domain is `australian_fire_watch`.
 
+Version 1.3.3 adds compatibility with the SA CFS Atom-wrapped CAP feed and a
+scheduled live contract check for upstream publisher format changes.
+
 > **Safety**
 >
 > This is supplementary, unofficial software. It is not endorsed by any
