@@ -312,7 +312,7 @@ async def test_modern_notification_entity_uses_send_message_target(hass, loaded)
     )
     await loaded._async_flush_notifications()
     assert len(calls) == 1
-    assert calls[0].data["entity_id"] == ["notify.fixture_receiver"]
+    assert calls[0].data["entity_id"] == "notify.fixture_receiver"
     assert not loaded._outbox.pending
     hass.services.async_remove("notify", "send_message")
 
