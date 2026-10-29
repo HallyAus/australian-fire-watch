@@ -261,9 +261,17 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 selected_codes = {result.profile.code for result in results}
                 if "QLD" in selected_codes:
                     latitude, longitude = self._home_coordinates()
-                    self._qld = await self.qld_provider.async_fetch(
-                        latitude, longitude
-                    )
+                    try:
+                        self._qld = await self.qld_provider.async_fetch(
+                            latitude, longitude
+                        )
+                    except Exception as err:  # noqa: BLE001
+                        # QLD enrichment must never block NSW or other states.
+                        # Log the type only: no coordinates or query URLs.
+                        _LOGGER.warning(
+                            "QLD fire danger/ban fetch failed: %s", type(err).__name__
+                        )
+                        self._qld = empty_qld()
                 else:
                     self._qld = empty_qld()
                 nsw = next(

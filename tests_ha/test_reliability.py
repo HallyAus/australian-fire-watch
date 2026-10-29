@@ -370,3 +370,27 @@ async def test_local_notification_publication_preserves_feed_poll_and_health():
     listeners.assert_called_once()
     assert coordinator.last_update_success is False
     assert coordinator.data == {"local": True}
+
+
+@pytest.mark.parametrize("entry", [{"jurisdictions": ["QLD", "NSW"]}], indirect=True)
+async def test_qld_fetch_error_does_not_block_other_states(
+    hass, entry, loaded, feeds, caplog
+):
+    for name in ("rfs_cap", "rfs_incident_alerts"):
+        feeds[name] = snapshot(name, cap("iso-nsw", "Watch and Act"))
+    feeds["rfs_geojson"] = snapshot("rfs_geojson", geo("iso-nsw", "Watch and Act"))
+
+    async def boom(_self, latitude, longitude, *, now=None):
+        raise RuntimeError("fixture QLD failure")
+
+    with patch(
+        "custom_components.australian_fire_watch.coordinator.QldArcGISProvider.async_fetch",
+        new=boom,
+    ):
+        await loaded.async_refresh()
+        await hass.async_block_till_done()
+
+    assert loaded.last_update_success
+    assert "iso-nsw" in {item["id"] for item in loaded.data["incidents"]}
+    assert loaded.data["qld"]["health"] == "unavailable"
+    assert "QLD fire danger/ban fetch failed: RuntimeError" in caplog.text
