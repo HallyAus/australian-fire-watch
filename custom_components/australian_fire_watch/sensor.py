@@ -11,7 +11,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, VERSION
+from .const import DOMAIN, VERSION, jurisdiction_codes
 from .coordinator import FireWatchCoordinator
 
 SUMMARY_OPTIONS = [
@@ -34,15 +34,16 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: FireWatchCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]
-    async_add_entities(
-        [
-            FireWatchSummarySensor(coordinator),
-            FireWatchDangerSensor(coordinator),
-            FireWatchHighestIncidentSensor(coordinator),
-            FireWatchIncidentCountSensor(coordinator),
-            FireWatchFeedHealthSensor(coordinator),
-        ]
-    )
+    entities = [
+        FireWatchSummarySensor(coordinator),
+        FireWatchDangerSensor(coordinator),
+        FireWatchHighestIncidentSensor(coordinator),
+        FireWatchIncidentCountSensor(coordinator),
+        FireWatchFeedHealthSensor(coordinator),
+    ]
+    if "QLD" in jurisdiction_codes(coordinator.config):
+        entities.append(FireWatchQldTomorrowDangerSensor(coordinator))
+    async_add_entities(entities)
 
 
 class FireWatchSensorBase(CoordinatorEntity[FireWatchCoordinator], SensorEntity):
@@ -117,6 +118,45 @@ class FireWatchDangerSensor(FireWatchSensorBase):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return dict(self.coordinator.data.get("danger", {}))
+
+
+class FireWatchQldTomorrowDangerSensor(FireWatchSensorBase):
+    """QLD tomorrow forecast, using the previously registered entity unique ID."""
+
+    _attr_name = "Fire danger tomorrow"
+    _attr_icon = "mdi:fire-circle"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = DANGER_OPTIONS
+
+    def __init__(self, coordinator: FireWatchCoordinator) -> None:
+        # Preserve the unique ID used by earlier development builds.
+        super().__init__(coordinator, "qld_fire_danger_day_2")
+
+    @property
+    def _day(self) -> dict[str, Any]:
+        danger = self.coordinator.data.get("danger", {})
+        if danger.get("tomorrow", {}).get("rating_source") != "QFD/BOM ArcGIS FDR":
+            return {}
+        return danger.get("tomorrow", {})
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self._day.get("available"))
+
+    @property
+    def native_value(self) -> str:
+        return str(self._day.get("rating", "Unknown"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "date": self._day.get("date"),
+            "district": self.coordinator.data.get("danger", {}).get("district"),
+            "source_updated_at": (
+                self.coordinator.data.get("qld") or {}
+            ).get("forecast", {}).get("source_updated_at"),
+            "source_url": "https://www.fire.qld.gov.au/prepare/bushfire/fire-danger-ratings",
+        }
 
 
 class FireWatchHighestIncidentSensor(FireWatchSensorBase):
