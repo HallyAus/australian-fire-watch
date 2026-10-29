@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.australian_fire_watch.api import FeedSnapshot
 from custom_components.australian_fire_watch.const import DOMAIN
+from custom_components.australian_fire_watch.qld_arcgis import empty_qld
 
 
 def cap(
@@ -104,9 +105,19 @@ def feed_client(feeds):
             validator(item.body)
         return replace(item, url=url)
 
-    with patch(
-        "custom_components.australian_fire_watch.coordinator.OfficialFeedClient.async_fetch",
-        new=fetch,
+    async def qld_fetch(_self, latitude, longitude, *, now=None):
+        # Keep runtime tests offline: never reach the live QFD ArcGIS service.
+        return empty_qld()
+
+    with (
+        patch(
+            "custom_components.australian_fire_watch.coordinator.OfficialFeedClient.async_fetch",
+            new=fetch,
+        ),
+        patch(
+            "custom_components.australian_fire_watch.coordinator.QldArcGISProvider.async_fetch",
+            new=qld_fetch,
+        ),
     ):
         yield
 

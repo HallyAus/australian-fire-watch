@@ -104,6 +104,12 @@ from .parsers import (
     parse_rfs_fire_danger,
 )
 from .regional_parsers import PARSER_NAMES, fire_incidents_only
+from .qld_arcgis import QldArcGISProvider, empty_qld
+from .qld_parsers import (
+    danger_from_forecast,
+    danger_with_local_fire_ban,
+    merge_qld_feed_health,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -147,7 +153,9 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             always_update=False,
         )
         self.entry = entry
-        self.api = OfficialFeedClient(aiohttp_client.async_get_clientsession(hass))
+        session = aiohttp_client.async_get_clientsession(hass)
+        self.api = OfficialFeedClient(session)
+        self.qld_provider = QldArcGISProvider(session)
         self._store = Store[dict[str, Any]](
             hass, 1, f"{DOMAIN}.{entry.entry_id}.lifecycle"
         )
@@ -164,6 +172,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._incidents: tuple[Incident, ...] = ()
         self._planned: tuple[Incident, ...] = ()
         self._danger: dict[str, Any] = _unknown_danger()
+        self._qld: dict[str, Any] = empty_qld()
         self._warnings: list[dict[str, Any]] = []
         self._feed: dict[str, Any] = _empty_feed()
         self._parse_errors: dict[str, str] = {}
@@ -249,23 +258,70 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
                 self._set_display_incidents(monitored)
                 self._feed = self._compose_combined_feed(results)
-
+                selected_codes = {result.profile.code for result in results}
+                if "QLD" in selected_codes:
+                    latitude, longitude = self._home_coordinates()
+                    try:
+                        self._qld = await self.qld_provider.async_fetch(
+                            latitude, longitude
+                        )
+                    except Exception as err:  # noqa: BLE001
+                        # QLD enrichment must never block NSW or other states.
+                        # Log the type only: no coordinates or query URLs.
+                        _LOGGER.warning(
+                            "QLD fire danger/ban fetch failed: %s", type(err).__name__
+                        )
+                        self._qld = empty_qld()
+                else:
+                    self._qld = empty_qld()
                 nsw = next(
                     (result for result in results if result.profile.code == "NSW"),
                     None,
                 )
-                if nsw is not None and nsw.danger is not None:
+                qld_coverage = self._qld["forecast"].get("covered")
+                qld_ban_coverage = (
+                    self._qld["local_fire_ban"].get("health") == "fresh"
+                )
+                qld_location = (
+                    "QLD" in selected_codes
+                    and (qld_coverage is True or qld_ban_coverage)
+                )
+                if "QLD" in selected_codes and qld_coverage is True:
+                    # Geographic coverage wins even when the QLD forecast is stale:
+                    # do not mislabel a Queensland zone with NSW ratings.
+                    self._danger = danger_from_forecast(self._qld["forecast"])
+                    self._warnings = []
+                elif (
+                    nsw is not None
+                    and nsw.danger is not None
+                    and ("QLD" not in selected_codes or (
+                        qld_coverage is False and not qld_ban_coverage
+                    ))
+                ):
+                    # A valid zero-match QLD spatial query can fall back to NSW.
                     self._danger = nsw.danger
                     self._warnings = list(nsw.warnings)
                 else:
+                    # Failed QLD coverage checks are NOT an NSW location proof.
                     self._danger = _unknown_danger()
                     self._danger["district"] = (
-                        "Not available for selected jurisdictions"
+                        "Location not resolved to an available danger district"
                     )
                     self._danger["source_note"] = (
-                        "Use the official state or territory fire-danger source."
+                        "Missing or stale danger data is not evidence of safety."
                     )
                     self._warnings = []
+
+                if qld_location:
+                    self._danger = danger_with_local_fire_ban(
+                        self._danger, self._qld["local_fire_ban"]
+                    )
+                if "QLD" in selected_codes and not (
+                    qld_coverage is False
+                    and bool(selected_codes - {"QLD"})
+                    and not qld_ban_coverage
+                ):
+                    self._feed = merge_qld_feed_health(self._feed, self._qld)
 
                 events = await self._async_track_lifecycle(
                     current_monitored,
@@ -275,7 +331,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
                 danger_events = (
                     await self._async_track_danger_lifecycle(nsw.danger_current)
-                    if nsw is not None
+                    if nsw is not None and self._danger is nsw.danger
                     else []
                 )
                 self.last_events = tuple(events)
@@ -807,6 +863,7 @@ class FireWatchCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "recommended_action": recommended,
             "official_warning_level": warning_level,
             "danger": self._danger,
+            "qld": self._qld if "QLD" in {p.code for p in profiles} else None,
             "incidents": incident_dicts,
             "planned_burns": planned_dicts,
             "camera_network": {

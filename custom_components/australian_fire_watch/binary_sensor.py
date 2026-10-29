@@ -24,14 +24,13 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: FireWatchCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]
-    async_add_entities(
-        [
-            FireWatchActiveWarningBinarySensor(coordinator),
-            FireWatchTotalFireBanBinarySensor(coordinator),
-            FireWatchFeedProblemBinarySensor(coordinator),
-            FireWatchDeliveryProblemBinarySensor(coordinator),
-        ]
-    )
+    entities = [
+        FireWatchActiveWarningBinarySensor(coordinator),
+        FireWatchTotalFireBanBinarySensor(coordinator),
+        FireWatchFeedProblemBinarySensor(coordinator),
+        FireWatchDeliveryProblemBinarySensor(coordinator),
+    ]
+    async_add_entities(entities)
 
 
 class FireWatchBinarySensorBase(
@@ -101,21 +100,46 @@ class FireWatchTotalFireBanBinarySensor(FireWatchBinarySensorBase):
 
     @property
     def available(self) -> bool:
+        today = self.coordinator.data.get("danger", {}).get("today", {})
+        # Queensland's legal ban feed is independent from the FDR feed. A valid
+        # ban remains available during an FDR outage, and an invalid ban can
+        # never be treated as False even with a valid danger rating.
+        if "total_fire_ban_available" in today:
+            return (
+                super().available
+                and today["total_fire_ban_available"] is True
+                and isinstance(self.is_on, bool)
+            )
+        # Keep existing NSW availability and unique ID unchanged.
         return (
             super().available
-            and self.coordinator.data.get("danger", {})
-            .get("today", {})
-            .get("available", False)
+            and today.get("available", False)
             and self.is_on is not None
         )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         danger = self.coordinator.data.get("danger", {})
-        return {
+        today = danger.get("today", {})
+        attributes = {
             "district": danger.get("district"),
             "issued_at": danger.get("rfs_issued_at"),
         }
+        if "total_fire_ban_available" in today:
+            attributes.update({
+                "restriction_type": "QLD Local Fire Ban",
+                "lga": today.get("fire_ban_lga"),
+                "source_status": today.get("fire_ban_source_status"),
+                "effective_from": today.get("fire_ban_effective_from"),
+                "effective_to": today.get("fire_ban_effective_to"),
+                "record_updated_at": today.get("fire_ban_record_updated_at"),
+                "source_health": today.get("fire_ban_health"),
+                "source_url": (
+                    "https://www.fire.qld.gov.au/safety-education/"
+                    "using-fire-outdoors/fire-bans-and-restrictions"
+                ),
+            })
+        return attributes
 
 
 class FireWatchFeedProblemBinarySensor(FireWatchBinarySensorBase):
